@@ -2,325 +2,37 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CloverPit Companion</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/app-192.png" sizes="192x192">
-  <link rel="apple-touch-icon" href="icons/app-192.png">
-  <meta name="theme-color" content="#0d1117">
-  <link rel="stylesheet" href="style.css">
-<script>
-(function(){
-  if (window.__cpit_boot) return;
-  window.__cpit_boot = { ok:false, errs:[] };
-  function report(kind, err){
-    try{
-      var msg = (err && (err.message||err.reason||err)) || 'unknown';
-      __cpit_boot.errs.push(kind+': '+msg);
-      var id='cpit_err_badge', el=document.getElementById(id);
-      if(!el){
-        el=document.createElement('div'); el.id=id; el.setAttribute('role','status');
-        el.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:#2b0f13;color:#ffd1d1;padding:8px 10px;border:1px solid #5a1a1f;border-radius:10px;font:12px system-ui;max-width:70vw;box-shadow:0 6px 18px rgba(0,0,0,.35)';
-        el.textContent='Warning: startup issue - see console';
-        document.documentElement.appendChild(el);
-      }
-      console.warn('[CloverPit boot]', kind, err);
-    }catch(e){}
-  }
-  window.addEventListener('error', function(e){ report('error', e.error||e.message); });
-  window.addEventListener('unhandledrejection', function(e){ report('unhandledrejection', e.reason||e); });
-})();
-</script>
+  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-08">
+  <link rel="stylesheet" href="style.css?v=2025-10-02-08">
 </head>
 <body>
-  <div class="top-progress" id="topProgress"></div>
-  <header class="hdr">
-    <div class="wrap row space">
-      <div class="row gap">
-        <img src="icons/app-192.png" alt="CloverPit Companion Logo" class="logo">
-        <h1>CloverPit Companion</h1>
-      </div>
-      <div class="row gap">
-        <div id="versionBadge" class="ver-badge" aria-live="polite" hidden></div>
-        <button class="btn ghost" id="exportBtn">Export</button>
-        <button class="btn" id="importBtn">Import</button>
-        <input type="file" id="fileInput" accept="application/json" hidden>
-        <button class="btn primary" id="resetBtn" title="Alles zuruecksetzen">Reset</button>
-        <button class="btn install" id="installBtn" hidden>Installieren</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="panel pad">
-      <h2>Bestand</h2>
-      <div class="kpi">
-        <div class="box"><label for="coins">Muenzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
-        <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
-      </div>
-
-      <hr class="sep">
-      <h2>Filter & Suche</h2>
-      <div class="toolbar">
-        <input type="text" id="search" placeholder="Suche Name/Effekt" autocomplete="off" />
-        <div class="chips" id="chips">
-          <button class="chip" data-chip="red-button">Red-Button</button>
-          <button class="chip" data-chip="golden-mod">Golden-Mod</button>
-          <button class="chip" data-chip="tickets">Tickets</button>
-          <button class="chip" data-chip="energy">Energy</button>
-          <button class="chip" data-chip="interest">Interest</button>
-          <button class="chip" data-chip="random">Random</button>
-          <button class="chip" data-chip="patterns">Patterns</button>
-        </div>
-        <select id="rarity" aria-label="Seltenheit">
-          <option value="">Seltenheit - alle</option>
-          <option>Common</option>
-          <option>Uncommon</option>
-          <option>Rare</option>
-          <option>Epic</option>
-          <option>Legendary</option>
-        </select>
-        <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
-        <div class="bulk">
-          <button class="btn sm" id="bulkSelect">Alle im Filter markieren</button>
-          <button class="btn sm ghost" id="bulkClear">Alle im Filter entfernen</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel pad">
-      <h2>Aktive Effekte</h2>
-      <div id="stats" class="subtle"></div>
-      <div id="effectsBox">
-        <div class="row space">
-          <div class="fx-head">Zusammenfassung</div>
-          <span class="pill badge" id="effectsSummary">-</span>
-        </div>
-        <div id="effectsDetails" class="list"></div>
-      </div>
-
-      <details id="listSection" class="fold" open>
-        <summary>
-          <span>Gluecksbringer</span>
-          <span class="summary-badges">
-            <span class="pill" id="summaryFiltered">0 gefiltert</span>
-            <span class="pill" id="summaryOwned">0 besessen</span>
-          </span>
-        </summary>
-        <ul id="charmList" class="charm-list" aria-live="polite"></ul>
-      </details>
-      <div class="spacer"></div>
-    </section>
-  </main>
-
-  <nav class="dock" aria-label="Schnellleiste">
-    <button class="dock-btn" id="toggleOwned">Nur Besitz</button>
-    <button class="dock-btn" id="clearSearch">Suche loeschen</button>
-    <button class="dock-btn" id="scrollTop">Nach oben</button>
-  </nav>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-<script type="module">
-(async () => {
-  try {
-    let deferredPrompt; const installBtn = document.getElementById('installBtn');
-    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; if(installBtn) installBtn.hidden = false; });
-    if (installBtn) installBtn.addEventListener('click', async ()=>{ installBtn.disabled = true; if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; } installBtn.hidden = true; });
-
-    async function registerSW(){
-      if(!('serviceWorker' in navigator)) return;
-      const reg = await navigator.serviceWorker.register('./service-worker.js');
-      navigator.serviceWorker.addEventListener('controllerchange', ()=>window.location.reload());
-      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') reg.update(); });
-      setInterval(()=>reg.update(), 30*60*1000);
-      await checkVersion(true);
-      setTimeout(()=>checkVersion(false), 8000);
-    }
-    async function checkVersion(onLoad){
-      try{
-        const r = await fetch('./version.json', {cache:'no-store'});
-        const data = await r.json();
-        const version = data && data.version || '';
-        const last = localStorage.getItem('app_version');
-        showVersion(version, onLoad);
-        if(last && last !== version && navigator.serviceWorker.controller){
-          navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
-        }
-        localStorage.setItem('app_version', version);
-      }catch{}
-    }
-    function showVersion(v, onLoad){
-      const el = document.getElementById('versionBadge');
-      if (!el) return;
-      el.textContent = 'v ' + v;
-      el.hidden = false;
-      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
-      setTimeout(()=> el.classList.remove('show'), onLoad ? 2500 : 1200);
-    }
-    await registerSW();
-
-    const topProgress = document.getElementById('topProgress');
-    const setProgress = (p)=>{ if(topProgress) topProgress.style.setProperty('--p', p + '%'); };
-    setProgress(20);
-
-    let CHARMS = [];
-    try {
-      const res = await fetch('charms.json'); setProgress(60);
-      CHARMS = await res.json(); setProgress(100);
-    } catch (e) {
-      console.error('charms.json error', e);
-    }
-    setTimeout(()=> topProgress && topProgress.classList.add('done'), 350);
-
-    const store = { load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; }, save(d){ localStorage.setItem('cpit', JSON.stringify(d)); } };
-    const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false}, ui:{listOpen:true} }, store.load());
-
-    const $ = s=>document.querySelector(s);
-    const listEl = $('#charmList'); const statsEl = $('#stats'); const listSection = $('#listSection');
-    const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
-
-    const coinsEl = document.getElementById('coins');
-    const ticketsEl = document.getElementById('tickets');
-    if (coinsEl) { coinsEl.value = state.coins; coinsEl.addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); }); }
-    if (ticketsEl) { ticketsEl.value = state.tickets; ticketsEl.addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); }); }
-
-    const searchEl = document.getElementById('search');
-    const rarityEl = document.getElementById('rarity');
-    const ownedOnlyEl = document.getElementById('ownedOnly');
-    if (searchEl) { searchEl.value = state.filters.q; searchEl.addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }); }
-    if (rarityEl) { rarityEl.value = state.filters.rarity; rarityEl.addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); }); }
-    if (ownedOnlyEl) { ownedOnlyEl.checked = state.filters.ownedOnly; ownedOnlyEl.addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); }); }
-
-    const chipsEl = document.getElementById('chips');
-    if (chipsEl) {
-      chipsEl.addEventListener('click', e=>{
-        const chip = e.target.closest('[data-chip]'); if(!chip) return;
-        const tag = chip.getAttribute('data-chip');
-        const isActive = chip.classList.toggle('active');
-        state.filters.tag = isActive ? tag : '';
-        render(); sync();
-      });
-    }
-
-    if (listSection) {
-      listSection.open = !!state.ui.listOpen;
-      listSection.addEventListener('toggle', ()=>{ state.ui.listOpen = listSection.open; sync(); });
-    }
-
-    const resetBtn = document.getElementById('resetBtn');
-    if (resetBtn) resetBtn.addEventListener('click', ()=>{ if(confirm('Alles zuruecksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
-
-    const exportBtn = document.getElementById('exportBtn');
-    if (exportBtn) exportBtn.addEventListener('click', ()=>{
-      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'});
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      showToast('Export abgeschlossen');
+  <h1>CloverPit Companion</h1>
+  <div id="toast"></div>
+  <script type="module">
+  const VERSION="2025-10-02-08";
+  function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+  function waitForControllerChange(ms=5000){
+    return new Promise(res=>{
+      const t=setTimeout(res,ms);
+      navigator.serviceWorker?.addEventListener('controllerchange',()=>{clearTimeout(t);res();},{once:true});
     });
-
-    const importBtn = document.getElementById('importBtn');
-    const fileInput = document.getElementById('fileInput');
-    if (importBtn && fileInput) {
-      importBtn.addEventListener('click', ()=> fileInput.click());
-      fileInput.addEventListener('change', e=>{
-        const file = e.target.files && e.target.files[0]; if(!file) return;
-        const reader = new FileReader();
-        reader.onload = ()=>{
-          try{
-            const data = JSON.parse(reader.result);
-            Object.assign(state, data);
-            if (coinsEl) coinsEl.value = state.coins;
-            if (ticketsEl) ticketsEl.value = state.tickets;
-            render(); sync(); showToast('Import erfolgreich');
-          }catch{ showToast('Ungueltige JSON-Datei'); }
-        };
-        reader.readAsText(file);
-      });
-    }
-
-    const toggleOwnedBtn = document.getElementById('toggleOwned');
-    const clearSearchBtn = document.getElementById('clearSearch');
-    const scrollTopBtn = document.getElementById('scrollTop');
-    if (toggleOwnedBtn && ownedOnlyEl) toggleOwnedBtn.addEventListener('click', ()=>{ ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); });
-    if (clearSearchBtn && searchEl) clearSearchBtn.addEventListener('click', ()=>{ searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche geloescht'); });
-    if (scrollTopBtn) scrollTopBtn.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
-
-    function sync(){ store.save(state); updateStats(); renderEffects(); }
-    function updateStats(){
-      const ownedCount = Object.values(state.owned).filter(Boolean).length;
-      if (statsEl) statsEl.textContent = ownedCount + '/' + CHARMS.length + ' besessen - Tickets: ' + state.tickets + ' - Muenzen: ' + state.coins;
-      if (summaryOwned) summaryOwned.textContent = ownedCount + ' besessen';
-    }
-    function currentFiltered(){
-      const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
-      return (CHARMS||[]).filter(c=>{
-        if(rar && c.rarity!==rar) return false;
-        if(tag && !(c.tags||[]).includes(tag)) return false;
-        if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }
-        if(ownedOnly && !state.owned[c.id]) return false;
-        return true;
-      }).sort((a,b)=> a.name.localeCompare(b.name));
-    }
-    function highlight(text, query){
-      if(!query) return text;
-      const idx = text.toLowerCase().indexOf(query.toLowerCase());
-      if(idx<0) return text;
-      const before = text.slice(0, idx);
-      const match = text.slice(idx, idx+query.length);
-      const after = text.slice(idx+query.length);
-      return before+'<mark>'+match+'</mark>'+after;
-    }
-    function render(){
-      if (!listEl) return;
-      const items = currentFiltered(); const q = state.filters.q;
-      listEl.innerHTML = '';
-      for(const c of items){
-        const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
-        const label = document.createElement('label');
-        const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
-        chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? ('Hinzugefuegt: '+c.name) : ('Entfernt: '+c.name)); });
-        const container = document.createElement('div');
-        const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
-        const eff = document.createElement('div'); eff.className='c-effect'; eff.innerHTML = highlight(c.effect, q);
-        const meta = document.createElement('div'); meta.className='c-meta';
-        const t = document.createElement('span'); t.className='pill'; t.textContent = 'Tickets '+c.tickets;
-        const r = document.createElement('span'); r.className='pill'; r.textContent = c.rarity;
-        meta.appendChild(t); meta.appendChild(r);
-        for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
-        container.appendChild(name); container.appendChild(eff); container.appendChild(meta);
-        label.appendChild(chk); label.appendChild(container);
-        li.appendChild(label);
-        listEl.appendChild(li);
-      }
-      if (summaryFiltered) summaryFiltered.textContent = items.length + ' gefiltert';
-      updateStats(); renderEffects();
-    }
-    function renderEffects(){ const sumEl = document.getElementById('effectsSummary'); if(sumEl){ sumEl.textContent = '-'; sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); } }
-    function showToast(msg){ const el = document.getElementById('toast'); if(!el) return; el.textContent = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), 1600); }
-    function microPulse(el, on){ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on ? 'pulse-on' : 'pulse-off'); }
-
-    render(); renderEffects();
-
-    // Silent diagnostics
-    async function runDiagnostics() {
-      const issues = [];
-      try { const r = await fetch('./version.json', { cache: 'no-store' }); const data = await r.json(); if (!data || !data.version) issues.push('version.json leer/ungueltig'); } catch { issues.push('version.json nicht erreichbar'); }
-      if (!Array.isArray(CHARMS) || CHARMS.length === 0) issues.push('charms.json leer/nicht geladen');
-      ['#charmList', '#exportBtn', '#resetBtn'].forEach(sel => { if (!document.querySelector(sel)) issues.push('UI fehlt: '+sel); });
-      if (!navigator.serviceWorker.controller) issues.push('Kein aktiver Service Worker');
-      if (issues.length) { console.warn('Diagnosefehler:', issues); showToast('Diagnose: '+issues.join(' | ')); }
-    }
-    setTimeout(runDiagnostics, 1000);
-
-    if (window.__cpit_boot) window.__cpit_boot.ok = true;
-
-  } catch (fatal) {
-    console.error('Fataler Init-Fehler', fatal);
-    const el = document.getElementById('toast'); if (el) { el.textContent = 'Startfehler: ' + (fatal.message||fatal); el.classList.add('show'); }
   }
-})();
-</script>
+  async function swReadyOrTimeout(ms=5000){
+    const readyP=navigator.serviceWorker?.ready?.then(()=>true).catch(()=>false);
+    const ctrlP=waitForControllerChange(ms).then(()=>true);
+    const toP=delay(ms).then(()=>false);
+    const res=await Promise.race([readyP,ctrlP,toP]);
+    return !!res;
+  }
+  async function runDiagnostics() {
+    const issues=[];
+    await swReadyOrTimeout(5000);
+    if(!navigator.serviceWorker.controller) issues.push("Kein aktiver Service Worker");
+    if(issues.length){console.warn("Diagnosefehler:",issues);document.getElementById("toast").textContent=issues.join(" | ");}
+  }
+  if("serviceWorker" in navigator){navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(()=>{runDiagnostics();});}
+  </script>
 </body>
 </html>
