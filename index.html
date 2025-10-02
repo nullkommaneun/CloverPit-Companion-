@@ -5,18 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>CloverPit Companion</title>
   <meta name="description" content="CloverPit Companion – Liste auswählen, Effekte sehen, Tickets & Münzen tracken." />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/app-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/app-192.png">
+  <meta name="theme-color" content="#0d1117">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="top-progress" id="topProgress"></div>
   <header class="hdr">
     <div class="wrap row space">
-      <h1>🍀 CloverPit Companion</h1>
+      <div class="row gap">
+        <img src="icons/app-192.png" alt="CloverPit Companion Logo" class="logo">
+        <h1>🍀 CloverPit Companion</h1>
+      </div>
       <div class="row gap">
         <button class="btn ghost" id="exportBtn">Export</button>
         <button class="btn" id="importBtn">Import</button>
         <input type="file" id="fileInput" accept="application/json" hidden>
         <button class="btn primary" id="resetBtn" title="Alles zurücksetzen">Reset</button>
+        <button class="btn install" id="installBtn" hidden>Installieren</button>
       </div>
     </div>
   </header>
@@ -28,7 +36,7 @@
         <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
         <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
       </div>
-      <p class="subtle">Offline gespeichert (localStorage).</p>
+      <p class="subtle">Offline gespeichert (localStorage). PWA-fähig (Install-Button erscheint, sobald möglich).</p>
 
       <hr class="sep">
       <h2>Filter & Suche</h2>
@@ -85,39 +93,46 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-// ------------------- Progress UI -------------------
+// Register Service Worker (PWA)
+if('serviceWorker' in navigator){
+  try{ await navigator.serviceWorker.register('./service-worker.js'); }catch(e){ console.warn('SW reg failed', e); }
+}
+
+// Install prompt handling
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async ()=>{
+  installBtn.disabled = true;
+  if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
+  installBtn.hidden = true;
+});
+
+// Top progress
 const topProgress = document.getElementById('topProgress');
 function setProgress(p){ topProgress.style.setProperty('--p', p + '%'); }
-
-// ------------------- Load dataset -------------------
 setProgress(15);
-const res = await fetch('charms.json');
-setProgress(55);
-const CHARMS = await res.json();
-setProgress(100);
+
+// Load dataset
+const res = await fetch('charms.json'); setProgress(55);
+const CHARMS = await res.json(); setProgress(100);
 setTimeout(()=> topProgress.classList.add('done'), 350);
 
-// ------------------- Persistenz -------------------
-const store = {
-  load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; },
-  save(d){ localStorage.setItem('cpit', JSON.stringify(d)); }
-};
+// Persistenz
+const store = { load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; }, save(d){ localStorage.setItem('cpit', JSON.stringify(d)); } };
 const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false} }, store.load());
 
-// ------------------- UI Hooks -------------------
+// UI Hooks
 const $ = s=>document.querySelector(s);
-const listEl = $('#charmList');
-const statsEl = $('#stats');
-const toastEl = $('#toast');
-
+const listEl = $('#charmList'); const statsEl = $('#stats'); const toastEl = $('#toast');
 $('#coins').value = state.coins; $('#tickets').value = state.tickets;
 $('#coins').addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); });
 $('#tickets').addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); });
-
 $('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#ownedOnly').checked = state.filters.ownedOnly;
-$('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
-$('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
-$('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
 
 document.getElementById('chips').addEventListener('click', e=>{
   const chip = e.target.closest('[data-chip]'); if(!chip) return;
@@ -126,6 +141,9 @@ document.getElementById('chips').addEventListener('click', e=>{
   state.filters.tag = isActive ? tag : '';
   render(); sync();
 });
+$('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
+$('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
+$('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
 
 $('#resetBtn').addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
 $('#exportBtn').addEventListener('click', ()=>{
@@ -156,26 +174,15 @@ $('#toggleOwned').addEventListener('click', ()=>{ const el=$('#ownedOnly'); el.c
 $('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); });
 $('#scrollTop').addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
 
-// Bulk Ops
-document.getElementById('bulkSelect').addEventListener('click', ()=>{ bulkSet(true); });
-document.getElementById('bulkClear').addEventListener('click', ()=>{ bulkSet(false); });
-
-function bulkSet(val){
-  const filtered = currentFiltered();
-  for(const c of filtered){ state.owned[c.id] = val; }
-  sync(); render();
-  showToast(val ? 'Alle markiert' : 'Alle entfernt');
-  vibe(8);
-}
+// Bulk ops
+document.getElementById('bulkSelect').addEventListener('click', ()=> bulkSet(true));
+document.getElementById('bulkClear').addEventListener('click', ()=> bulkSet(false));
+function bulkSet(val){ const filtered = currentFiltered(); for(const c of filtered){ state.owned[c.id] = val; } sync(); render(); showToast(val ? 'Alle markiert' : 'Alle entfernt'); vibe(8); }
 
 function sync(){ store.save(state); updateStats(); renderEffects(); }
 
-function updateStats(){
-  const ownedCount = Object.values(state.owned).filter(Boolean).length;
-  statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`;
-}
+function updateStats(){ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`; }
 
-// ------------------- Rendering -------------------
 function currentFiltered(){
   const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
   return CHARMS.filter(c=>{
@@ -191,28 +198,19 @@ function highlight(text, query){
   if(!query) return text;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
   if(idx<0) return text;
-  const before = text.slice(0, idx);
-  const match = text.slice(idx, idx+query.length);
-  const after = text.slice(idx+query.length);
+  const before = text.slice(0, idx); const match = text.slice(idx, idx+query.length); const after = text.slice(idx+query.length);
   return `${before}<mark>${match}</mark>${after}`;
 }
 
 function render(){
-  const items = currentFiltered();
-  const q = state.filters.q;
+  const items = currentFiltered(); const q = state.filters.q;
   listEl.innerHTML = '';
   for(const c of items){
     const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
     const label = document.createElement('label');
 
     const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
-    chk.addEventListener('change', e=>{ 
-      state.owned[c.id] = e.target.checked; 
-      sync(); 
-      microPulse(li, e.target.checked);
-      showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`);
-      vibe(7);
-    });
+    chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`); vibe(7); });
 
     const container = document.createElement('div');
     const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
@@ -229,30 +227,20 @@ function render(){
     li.appendChild(label);
     listEl.appendChild(li);
   }
-  updateStats();
-  renderEffects();
+  updateStats(); renderEffects();
 }
 
-// ------------------- Effekte aggregieren -------------------
+// Effects aggregation
 function computeEffects(){
-  const eff = {
-    energy_end:0, spins:0, interest_pct:0, luck_flat:0, tickets_instant:0,
-    ticket_mod_symbol_chance_pct:0, ticket_mod_cap_pct:0, multiplier_symbol_base:0,
-    row_base:0, symbol_base:{}, notes:[]
-  };
+  const eff = { energy_end:0, spins:0, interest_pct:0, luck_flat:0, tickets_instant:0, ticket_mod_symbol_chance_pct:0, ticket_mod_cap_pct:0, multiplier_symbol_base:0, row_base:0, symbol_base:{}, notes:[] };
   for(const c of CHARMS){
-    if(!state.owned[c.id]) continue;
-    const m = c.mods||{};
+    if(!state.owned[c.id]) continue; const m = c.mods||{};
     if(m.energy_end) eff.energy_end += m.energy_end;
     if(m.spins) eff.spins += m.spins;
     if(m.interest_pct) eff.interest_pct += m.interest_pct;
     if(m.multiplier_symbol_base) eff.multiplier_symbol_base += m.multiplier_symbol_base;
     if(m.row_base) eff.row_base += m.row_base;
-    if(m.symbol_base){
-      for(const [sym,val] of Object.entries(m.symbol_base)){
-        eff.symbol_base[sym] = (eff.symbol_base[sym]||0)+val;
-      }
-    }
+    if(m.symbol_base){ for(const [sym,val] of Object.entries(m.symbol_base)){ eff.symbol_base[sym] = (eff.symbol_base[sym]||0)+val; } }
     if(m.tickets_instant) eff.tickets_instant += m.tickets_instant;
     if(m.ticket_mod_symbol_chance_pct) eff.ticket_mod_symbol_chance_pct += m.ticket_mod_symbol_chance_pct;
     if(m.ticket_mod_cap_pct && m.ticket_mod_cap_pct>eff.ticket_mod_cap_pct) eff.ticket_mod_cap_pct = m.ticket_mod_cap_pct;
@@ -271,62 +259,21 @@ function computeEffects(){
   }
   return eff;
 }
-
 function renderEffects(){
-  const eff = computeEffects();
-  const sumEl = document.getElementById('effectsSummary');
-  const detEl = document.getElementById('effectsDetails');
-  if(!sumEl||!detEl) return;
-
-  const parts = [];
-  if(eff.spins) parts.push(`Spins +${eff.spins}`);
-  if(eff.energy_end) parts.push(`Energy/Deadline +${eff.energy_end}`);
-  if(eff.interest_pct) parts.push(`Zinsen +${eff.interest_pct}%`);
-  if(eff.multiplier_symbol_base) parts.push(`Symbol‑Multiplikator +${eff.multiplier_symbol_base}`);
-  if(Object.keys(eff.symbol_base).length) parts.push(`Symbol‑Basiswerte aktiv`);
-  if(eff.row_base) parts.push(`Reihen‑Basis ${eff.row_base>0?'+':''}${eff.row_base}`);
-  if(eff.tickets_instant) parts.push(`Tickets sofort +${eff.tickets_instant}`);
-  if(eff.ticket_mod_symbol_chance_pct) parts.push(`Ticket‑Mod‑Chance +${eff.ticket_mod_symbol_chance_pct}% (Cap ${eff.ticket_mod_cap_pct||'—'}%)`);
-  sumEl.textContent = parts.length? parts.join(' · ') : 'Keine dauerhaften Basiseffekte';
-  sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); // re-trigger animation
-
+  const eff = computeEffects(); const sumEl = document.getElementById('effectsSummary'); const detEl = document.getElementById('effectsDetails'); if(!sumEl||!detEl) return;
+  const parts = []; if(eff.spins) parts.push(`Spins +${eff.spins}`); if(eff.energy_end) parts.push(`Energy/Deadline +${eff.energy_end}`); if(eff.interest_pct) parts.push(`Zinsen +${eff.interest_pct}%`); if(eff.multiplier_symbol_base) parts.push(`Symbol‑Multiplikator +${eff.multiplier_symbol_base}`); if(Object.keys(eff.symbol_base).length) parts.push(`Symbol‑Basiswerte aktiv`); if(eff.row_base) parts.push(`Reihen‑Basis ${eff.row_base>0?'+':''}${eff.row_base}`); if(eff.tickets_instant) parts.push(`Tickets sofort +${eff.tickets_instant}`); if(eff.ticket_mod_symbol_chance_pct) parts.push(`Ticket‑Mod‑Chance +${eff.ticket_mod_symbol_chance_pct}% (Cap ${eff.ticket_mod_cap_pct||'—'}%)`);
+  sumEl.textContent = parts.length? parts.join(' · ') : 'Keine dauerhaften Basiseffekte'; sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop');
   detEl.innerHTML = '';
-  if(Object.keys(eff.symbol_base).length || eff.row_base){
-    const card = document.createElement('div'); card.className='card';
-    const title = document.createElement('div'); title.className='c-name'; title.textContent='Basiswerte';
-    const fx = document.createElement('div'); fx.className='c-effect';
-    const symParts = Object.entries(eff.symbol_base).map(([k,v])=>`${k}: ${v>0?'+':''}${v}`);
-    const sections = [];
-    if(symParts.length) sections.push(`Symbole → ${symParts.join(', ')}`);
-    if(eff.row_base) sections.push(`Reihen → ${eff.row_base>0?'+':''}${eff.row_base}`);
-    fx.textContent = sections.join(' | ');
-    card.appendChild(title); card.appendChild(fx);
-    detEl.appendChild(card);
-  }
-  if(eff.notes.length){
-    const card = document.createElement('div'); card.className='card';
-    const title = document.createElement('div'); title.className='c-name'; title.textContent='Konditionale Effekte';
-    const fx = document.createElement('div'); fx.className='c-effect'; fx.textContent = eff.notes.join(' · ');
-    card.appendChild(title); card.appendChild(fx);
-    detEl.appendChild(card);
-  }
+  if(Object.keys(eff.symbol_base).length || eff.row_base){ const card = document.createElement('div'); card.className='card'; const title = document.createElement('div'); title.className='c-name'; title.textContent='Basiswerte'; const fx = document.createElement('div'); fx.className='c-effect'; const symParts = Object.entries(eff.symbol_base).map(([k,v])=>`${k}: ${v>0?'+':''}${v}`); const sections = []; if(symParts.length) sections.push(`Symbole → ${symParts.join(', ')}`); if(eff.row_base) sections.push(`Reihen → ${eff.row_base>0?'+':''}${eff.row_base}`); fx.textContent = sections.join(' | '); card.appendChild(title); card.appendChild(fx); detEl.appendChild(card); }
+  if(eff.notes.length){ const card = document.createElement('div'); card.className='card'; const title = document.createElement('div'); title.className='c-name'; title.textContent='Konditionale Effekte'; const fx = document.createElement('div'); fx.className='c-effect'; fx.textContent = eff.notes.join(' · '); card.appendChild(title); card.appendChild(fx); detEl.appendChild(card); }
 }
 
-// ------------------- Microinteractions -------------------
-function showToast(msg){
-  toastEl.textContent = msg;
-  toastEl.classList.remove('show'); void toastEl.offsetWidth; toastEl.classList.add('show');
-  setTimeout(()=> toastEl.classList.remove('show'), 1600);
-}
-function microPulse(el, on){
-  el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth;
-  el.classList.add(on ? 'pulse-on' : 'pulse-off');
-}
+// Microinteractions
+function showToast(msg){ toastEl.textContent = msg; toastEl.classList.remove('show'); void toastEl.offsetWidth; toastEl.classList.add('show'); setTimeout(()=> toastEl.classList.remove('show'), 1600); }
+function microPulse(el, on){ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on ? 'pulse-on' : 'pulse-off'); }
 function vibe(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch{} }
 
-// Initial render
-render();
-renderEffects();
+render(); renderEffects();
 </script>
 </body>
 </html>
