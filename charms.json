@@ -1,20 +1,7 @@
 [
   {
-    "id": "bell-picture",
-    "name": "Bell Picture",
-    "tickets": 4,
-    "rarity": "Uncommon",
-    "tags": [
-      "red-button",
-      "energy",
-      "symbols-bias"
-    ],
-    "effect": "Red-Button: Mehr Glocken (+2) in dieser Runde. Am Deadline-Ende +1 Energy.",
-    "mods": {
-      "energy_end": 1,
-      "red_button_bias": {
-        "bell": 2
-      }
-    }
+    "id": "test",
+    "name": "Test",
+    "tickets": 0
   }
 ]

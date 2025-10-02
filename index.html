@@ -2,76 +2,85 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>CloverPit Companion</title>
-  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-10">
-  <link rel="stylesheet" href="style.css?v=2025-10-02-10">
-  <script>
-(function(){ 
-  if (window.__cpit_boot) return;
-  window.__cpit_boot = { ok:false, errs:[] };
-  function ensureBadge(){ 
-    var el=document.getElementById('cpit_err_badge'); 
-    if(el) return el;
-    el=document.createElement('div'); el.id='cpit_err_badge'; el.setAttribute('role','status'); el.setAttribute('aria-live','assertive');
-    el.innerHTML='<div class="t">⚠️ Startproblem</div><div class="m"></div><div class="row"><button id="cpit_copy">Details kopieren</button><span class="small" id="cpit_count"></span></div>';
-    document.documentElement.appendChild(el); 
-    return el;
-  }
-  function textOf(err){ 
-    try{ 
-      if(!err) return 'Unbekannter Fehler';
-      if(typeof err==='string') return err;
-      if(err.stack) return String(err.stack);
-      if(err.message) return String(err.message);
-      return JSON.stringify(err);
-    }catch(e){ return 'Unbekannter Fehler'; }
-  }
-  function updateBadge(msg){
-    var el=ensureBadge();
-    var m=el.querySelector('.m'); var c=el.querySelector('#cpit_count');
-    m.textContent = msg.slice(0,600);
-    c.textContent = '('+window.__cpit_boot.errs.length+' Fehler)';
-    var copyBtn = el.querySelector('#cpit_copy');
-    copyBtn.onclick = function(){
-      try{ 
-        var all = window.__cpit_boot.errs.join('\n');
-        navigator.clipboard.writeText(all).then(()=>{copyBtn.textContent='Kopiert'; setTimeout(()=>copyBtn.textContent='Details kopieren',1500);});
-      }catch(e){ alert('Kopieren nicht möglich'); }
-    };
-  }
-  function report(kind, err){
-    var msg = '['+kind+'] '+ textOf(err);
-    window.__cpit_boot.errs.push(msg);
-    updateBadge(msg);
-    try{ console.warn('[CloverPit boot]', kind, err); }catch(_ ){}
-  }
-  window.addEventListener('error', function(e){ report('error', e.error||e.message||e); });
-  window.addEventListener('unhandledrejection', function(e){ report('unhandledrejection', e.reason||e); });
-})();
-</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CloverPit SW‑Selfcheck</title>
+  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-11">
+  <link rel="stylesheet" href="style.css?v=2025-10-02-11">
 </head>
 <body>
-  <header class="hdr">
-    <div class="wrap row space">
-      <div class="row gap"><img class="logo" src="icons/app-192.png" alt=""><h1>🍀 CloverPit Companion</h1></div>
-      <div class="row gap"><div id="versionBadge" class="ver-badge" hidden></div></div>
+  <div class="wrap">
+    <h1>Service‑Worker Self‑Check</h1>
+    <p>Dieser Check prüft <code>service-worker.js</code> und die importierte Datei <code>sw-2025-10-02-11.js</code> auf Erreichbarkeit und Syntax.</p>
+    <div class="tbl">
+      <div>Scope (vermutet)</div><div id="scope"></div>
+      <div>SW URL</div><div id="swUrl"></div>
+      <div>SW Status</div><div id="swStatus"></div>
+      <div>SW Kopf</div><div><pre id="swHead"></pre></div>
+      <div>Import URL</div><div id="impUrl"></div>
+      <div>Import Status</div><div id="impStatus"></div>
+      <div>Import Kopf</div><div><pre id="impHead"></pre></div>
+      <div>Parsergebnis</div><div id="parseResult"></div>
     </div>
-  </header>
-  <main class="wrap">
-    <p>Fehlerausgabe ist jetzt **explizit** sichtbar (auch mobil). Teste den Button:</p>
-    <button id="testError">Testfehler</button>
-  </main>
-  <script type="module">
-    const VERSION = "2025-10-02-10";
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
-      navigator.serviceWorker.addEventListener('controllerchange', ()=>location.reload());
-    }
-    fetch('./version.json?v='+VERSION, {cache:'no-store'}).then(r=>r.json()).then(d=>{
-      const el=document.getElementById('versionBadge'); if(el){ el.textContent='v '+(d.version||''); el.hidden=false; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2000); }
-    });
-    document.getElementById('testError')?.addEventListener('click', ()=>{ Promise.reject(new Error('Absichtlicher Testfehler für die Badge-Ausgabe')); });
-  </script>
+    <p><small>Tipp: Wenn hier HTML anfängt mit <code>&lt;!doctype</code> oder <code>&lt;html</code>, liefert GitHub Pages 404/Umleitungs‑HTML → Ursache des Fehlers.</small></p>
+    <p><button id="register">SW registrieren</button></p>
+    <div id="regResult"></div>
+  </div>
+
+<script type="module">
+const VERSION = "2025-10-02-11";
+const scope = location.origin + location.pathname.replace(/[^/]+$/, '');
+document.getElementById('scope').textContent = scope;
+const swUrl = new URL('./service-worker.js', scope).href;
+const impUrl = new URL('./sw-'+VERSION+'.js', scope).href;
+document.getElementById('swUrl').textContent = swUrl;
+document.getElementById('impUrl').textContent = impUrl;
+
+async function head(url){
+  try{
+    const r = await fetch(url+'?v='+VERSION, {cache:'no-store'});
+    const t = await r.text();
+    return { ok:r.ok, status:r.status, head: t.slice(0,180) };
+  }catch(e){
+    return { ok:false, status:'fetch error', head: String(e) };
+  }
+}
+
+function show(id, ok, status, headSel){
+  const sEl = document.getElementById(id);
+  sEl.textContent = (ok ? 'OK ' : 'FEHLER ') + '('+status+')';
+  sEl.className = ok ? 'good' : 'bad';
+  if (headSel) document.getElementById(headSel).textContent = headSel.includes('imp') ? window.__impHead : window.__swHead;
+}
+
+(async () => {
+  const sw = await head(swUrl);
+  window.__swHead = sw.head;
+  show('swStatus', sw.ok, sw.status, 'swHead');
+
+  const imp = await head(impUrl);
+  window.__impHead = imp.head;
+  show('impStatus', imp.ok, imp.status, 'impHead');
+
+  // Syntax‑Probe: versuche die importierte Datei zu parsen
+  try {
+    const code = await (await fetch(impUrl+'?v='+VERSION, {cache:'no-store'})).text();
+    new Function(code); // nur Parsing-Test
+    document.getElementById('parseResult').textContent = 'Syntax OK';
+    document.getElementById('parseResult').className = 'good';
+  } catch(e) {
+    document.getElementById('parseResult').textContent = 'Syntax FEHLER: '+(e.message||e);
+    document.getElementById('parseResult').className = 'bad';
+  }
+})();
+
+document.getElementById('register').addEventListener('click', async () => {
+  try {
+    const reg = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache:'none' });
+    document.getElementById('regResult').textContent = 'Registriert: ' + (reg.scope||'');
+  } catch(e) {
+    document.getElementById('regResult').textContent = 'Register-Fehler: ' + (e.message||e);
+  }
+});
+</script>
 </body>
 </html>
