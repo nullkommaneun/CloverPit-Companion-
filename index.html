@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="top-progress" id="topProgress"></div>
   <header class="hdr">
     <div class="wrap row space">
       <h1>🍀 CloverPit Companion</h1>
@@ -33,6 +34,15 @@
       <h2>Filter & Suche</h2>
       <div class="toolbar">
         <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
+        <div class="chips" id="chips">
+          <button class="chip" data-chip="red-button">Red‑Button</button>
+          <button class="chip" data-chip="golden-mod">Golden‑Mod</button>
+          <button class="chip" data-chip="tickets">Tickets</button>
+          <button class="chip" data-chip="energy">Energy</button>
+          <button class="chip" data-chip="interest">Interest</button>
+          <button class="chip" data-chip="random">Random</button>
+          <button class="chip" data-chip="patterns">Patterns</button>
+        </div>
         <select id="rarity" aria-label="Seltenheit">
           <option value="">Seltenheit – alle</option>
           <option>Common</option>
@@ -41,17 +51,11 @@
           <option>Epic</option>
           <option>Legendary</option>
         </select>
-        <select id="tag" aria-label="Tag">
-          <option value="">Tag – alle</option>
-          <option value="red-button">Red‑Button</option>
-          <option value="golden-mod">Golden‑Mod</option>
-          <option value="tickets">Tickets</option>
-          <option value="energy">Energy</option>
-          <option value="interest">Interest</option>
-          <option value="random">Random‑Trigger</option>
-          <option value="patterns">Pattern‑Scaling</option>
-        </select>
         <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
+        <div class="bulk">
+          <button class="btn sm" id="bulkSelect">Alle im Filter markieren</button>
+          <button class="btn sm ghost" id="bulkClear">Alle im Filter entfernen</button>
+        </div>
       </div>
     </section>
 
@@ -61,7 +65,7 @@
       <div id="effectsBox">
         <div class="row space">
           <div class="fx-head">Zusammenfassung</div>
-          <span class="pill" id="effectsSummary">–</span>
+          <span class="pill badge" id="effectsSummary">–</span>
         </div>
         <div id="effectsDetails" class="list"></div>
       </div>
@@ -78,10 +82,20 @@
     <button class="dock-btn" id="scrollTop" title="Nach oben">Nach oben</button>
   </nav>
 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
 <script type="module">
+// ------------------- Progress UI -------------------
+const topProgress = document.getElementById('topProgress');
+function setProgress(p){ topProgress.style.setProperty('--p', p + '%'); }
+
 // ------------------- Load dataset -------------------
+setProgress(15);
 const res = await fetch('charms.json');
+setProgress(55);
 const CHARMS = await res.json();
+setProgress(100);
+setTimeout(()=> topProgress.classList.add('done'), 350);
 
 // ------------------- Persistenz -------------------
 const store = {
@@ -94,16 +108,24 @@ const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity
 const $ = s=>document.querySelector(s);
 const listEl = $('#charmList');
 const statsEl = $('#stats');
+const toastEl = $('#toast');
 
 $('#coins').value = state.coins; $('#tickets').value = state.tickets;
 $('#coins').addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); });
 $('#tickets').addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); });
 
-$('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#tag').value = state.filters.tag; $('#ownedOnly').checked = state.filters.ownedOnly;
+$('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#ownedOnly').checked = state.filters.ownedOnly;
 $('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
 $('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
-$('#tag').addEventListener('change', e=>{ state.filters.tag = e.target.value; render(); sync(); });
 $('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
+
+document.getElementById('chips').addEventListener('click', e=>{
+  const chip = e.target.closest('[data-chip]'); if(!chip) return;
+  const tag = chip.getAttribute('data-chip');
+  const isActive = chip.classList.toggle('active');
+  state.filters.tag = isActive ? tag : '';
+  render(); sync();
+});
 
 $('#resetBtn').addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
 $('#exportBtn').addEventListener('click', ()=>{
@@ -111,6 +133,7 @@ $('#exportBtn').addEventListener('click', ()=>{
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'});
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  showToast('Export abgeschlossen');
 });
 $('#importBtn').addEventListener('click', ()=> $('#fileInput').click());
 $('#fileInput').addEventListener('change', e=>{
@@ -122,15 +145,28 @@ $('#fileInput').addEventListener('change', e=>{
       Object.assign(state, data);
       $('#coins').value = state.coins; $('#tickets').value = state.tickets;
       render(); sync();
-    }catch{ alert('Ungültige JSON-Datei.'); }
+      showToast('Import erfolgreich');
+    }catch{ showToast('Ungültige JSON-Datei'); }
   };
   reader.readAsText(file);
 });
 
 // Dock
 $('#toggleOwned').addEventListener('click', ()=>{ const el=$('#ownedOnly'); el.checked=!el.checked; el.dispatchEvent(new Event('change')); });
-$('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); });
+$('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); });
 $('#scrollTop').addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+// Bulk Ops
+document.getElementById('bulkSelect').addEventListener('click', ()=>{ bulkSet(true); });
+document.getElementById('bulkClear').addEventListener('click', ()=>{ bulkSet(false); });
+
+function bulkSet(val){
+  const filtered = currentFiltered();
+  for(const c of filtered){ state.owned[c.id] = val; }
+  sync(); render();
+  showToast(val ? 'Alle markiert' : 'Alle entfernt');
+  vibe(8);
+}
 
 function sync(){ store.save(state); updateStats(); renderEffects(); }
 
@@ -140,27 +176,47 @@ function updateStats(){
 }
 
 // ------------------- Rendering -------------------
-function render(){
+function currentFiltered(){
   const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
-  const items = CHARMS.filter(c=>{
+  return CHARMS.filter(c=>{
     if(rar && c.rarity!==rar) return false;
     if(tag && !(c.tags||[]).includes(tag)) return false;
     if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }
     if(ownedOnly && !state.owned[c.id]) return false;
     return true;
   }).sort((a,b)=> a.name.localeCompare(b.name));
+}
 
+function highlight(text, query){
+  if(!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if(idx<0) return text;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx+query.length);
+  const after = text.slice(idx+query.length);
+  return `${before}<mark>${match}</mark>${after}`;
+}
+
+function render(){
+  const items = currentFiltered();
+  const q = state.filters.q;
   listEl.innerHTML = '';
   for(const c of items){
-    const li = document.createElement('li'); li.className = 'charm-item';
+    const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
     const label = document.createElement('label');
 
     const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
-    chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); });
+    chk.addEventListener('change', e=>{ 
+      state.owned[c.id] = e.target.checked; 
+      sync(); 
+      microPulse(li, e.target.checked);
+      showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`);
+      vibe(7);
+    });
 
     const container = document.createElement('div');
-    const name = document.createElement('div'); name.className='c-name'; name.textContent=c.name;
-    const eff = document.createElement('div'); eff.className='c-effect'; eff.textContent=c.effect;
+    const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
+    const eff = document.createElement('div'); eff.className='c-effect'; eff.innerHTML = highlight(c.effect, q);
 
     const meta = document.createElement('div'); meta.className='c-meta';
     const t = document.createElement('span'); t.className='pill'; t.textContent = `🎟️ ${c.tickets}`;
@@ -169,7 +225,6 @@ function render(){
     for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
 
     container.appendChild(name); container.appendChild(eff); container.appendChild(meta);
-
     label.appendChild(chk); label.appendChild(container);
     li.appendChild(label);
     listEl.appendChild(li);
@@ -177,8 +232,6 @@ function render(){
   updateStats();
   renderEffects();
 }
-
-render();
 
 // ------------------- Effekte aggregieren -------------------
 function computeEffects(){
@@ -235,6 +288,7 @@ function renderEffects(){
   if(eff.tickets_instant) parts.push(`Tickets sofort +${eff.tickets_instant}`);
   if(eff.ticket_mod_symbol_chance_pct) parts.push(`Ticket‑Mod‑Chance +${eff.ticket_mod_symbol_chance_pct}% (Cap ${eff.ticket_mod_cap_pct||'—'}%)`);
   sumEl.textContent = parts.length? parts.join(' · ') : 'Keine dauerhaften Basiseffekte';
+  sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); // re-trigger animation
 
   detEl.innerHTML = '';
   if(Object.keys(eff.symbol_base).length || eff.row_base){
@@ -258,6 +312,20 @@ function renderEffects(){
   }
 }
 
+// ------------------- Microinteractions -------------------
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.remove('show'); void toastEl.offsetWidth; toastEl.classList.add('show');
+  setTimeout(()=> toastEl.classList.remove('show'), 1600);
+}
+function microPulse(el, on){
+  el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth;
+  el.classList.add(on ? 'pulse-on' : 'pulse-off');
+}
+function vibe(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch{} }
+
+// Initial render
+render();
 renderEffects();
 </script>
 </body>

@@ -11,8 +11,11 @@ body{
   color:var(--ink);
   background: radial-gradient(1200px 600px at 20% -10%, #0f1923 0%, #07090c 50%), linear-gradient(180deg, #07090c, #0a0f14 60%, #07090c);
 }
+/* Top progress bar */
+.top-progress{position:fixed;top:0;left:0;height:3px;width:100%;background:linear-gradient(90deg,transparent,rgba(57,229,140,.6));clip-path:inset(0 calc(100% - var(--p,0%)) 0 0);z-index:50;transition:clip-path .35s ease}
+.top-progress.done{opacity:0;transition:opacity .5s ease .2s}
 .hdr{position:sticky; top:0; z-index:10; backdrop-filter: blur(10px); background: rgba(7,9,12,.6); border-bottom: 1px solid #141a22}
-.wrap{max-width:900px;margin:0 auto;padding:14px}
+.wrap{max-width:950px;margin:0 auto;padding:14px}
 .row{display:flex;align-items:center}
 .space{justify-content:space-between}
 .gap{gap:8px}
@@ -25,6 +28,7 @@ button{cursor:pointer}
 .btn{padding:12px 16px;border:1px solid #1b2633;background:#0e1822}
 .btn.primary{background:linear-gradient(180deg,#2ddc7a,#1fb167);border-color:#1ea564;color:#08130c;font-weight:700}
 .btn.ghost{background:transparent}
+.btn.sm{padding:8px 12px;min-height:36px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kpi .box{padding:12px;border:1px solid #1a2430;border-radius:14px;background:#0a121a}
@@ -34,18 +38,42 @@ button{cursor:pointer}
 .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#0a121a;border:1px solid #1b2633;color:var(--muted)}
 .list{display:grid;gap:8px}
 .card{padding:12px;border:1px solid #1a2430;border-radius:12px;background:#0a121a}
+/* Chips */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border-radius:999px;border:1px solid #1b2633;background:#0e1822;color:#eaf1f8;padding:8px 12px;min-height:36px}
+.chip.active{background:#193023;border-color:#235c3f;box-shadow:0 0 0 2px rgba(57,229,140,.15) inset}
+/* Bulk */
+.bulk{display:flex;gap:6px;flex-wrap:wrap}
 /* Liste */
 .charm-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.charm-item{padding:10px 12px;border:1px solid #1a2430;border-radius:12px;background:#0a121a}
+.charm-item{padding:10px 12px;border:1px solid #1a2430;border-radius:12px;background:#0a121a;transition:transform .12s ease, border-color .2s ease, background .2s ease}
+.charm-item:hover{border-color:#23415d;background:#0b141d}
 .charm-item label{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}
 .charm-item input[type='checkbox']{accent-color:var(--acc);width:22px;height:22px;margin-top:2px}
 .c-name{font-weight:800}
 .c-effect{color:var(--muted);margin-top:2px}
 .c-meta{margin-top:6px;font-size:12px;color:#c7d3df;display:flex;gap:6px;flex-wrap:wrap}
+mark{background:rgba(57,229,140,.25);padding:0 2px;border-radius:4px}
 /* Effekte Box */
 #effectsBox{margin:12px 0;padding:12px;border:1px solid #1a2430;border-radius:14px;background:#0a121a}
 .fx-head{font-weight:800}
+.badge{transition:transform .12s ease}
+.badge.pop{transform:scale(1.06)}
+/* Dock */
 .dock{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;gap:8px;justify-content:center;padding:10px 12px; background:linear-gradient(180deg,rgba(7,9,12,0),rgba(7,9,12,.9) 40%);backdrop-filter: blur(8px);border-top:1px solid #141a22}
-.dock-btn{flex:1;max-width:200px;border-radius:14px;border:1px solid #1b2633;background:#0e1822;color:var(--ink); padding:12px 16px;min-height:44px;font-weight:700}
+.dock-btn{flex:1;max-width:220px;border-radius:14px;border:1px solid #1b2633;background:#0e1822;color:var(--ink); padding:12px 16px;min-height:44px;font-weight:700}
 .spacer{height:84px}
+/* Toast */
+.toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%) translateY(10px);background:#0e1822;border:1px solid #1b2633;padding:10px 14px;border-radius:12px;color:#eaf1f8;opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;z-index:25}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Micro pulse on toggle */
+.pulse-on{animation:pulseOn .28s ease}
+.pulse-off{animation:pulseOff .28s ease}
+@keyframes pulseOn{0%{transform:scale(1)}40%{transform:scale(1.01)}100%{transform:scale(1)}}
+@keyframes pulseOff{0%{transform:scale(1)}40%{transform:scale(.995)}100%{transform:scale(1)}}
+/* Reduce motion – respect user preference */
+@media (prefers-reduced-motion: reduce){
+  .badge, .charm-item, .toast{transition:none}
+  .pulse-on, .pulse-off{animation:none}
+}
 @media(min-width:700px){h1{font-size:22px}.wrap{padding:16px}}
