@@ -9,13 +9,7 @@
       "energy",
       "symbols-bias"
     ],
-    "effect": "Red-Button: Mehr Glocken (+2) in dieser Runde. Am Deadline-Ende +1 Energy.",
-    "mods": {
-      "energy_end": 1,
-      "red_button_bias": {
-        "bell": 2
-      }
-    }
+    "effect": "Red-Button: Mehr Glocken (+2) in dieser Runde. Am Deadline-Ende +1 Energy."
   },
   {
     "id": "car-battery",
@@ -25,10 +19,7 @@
     "tags": [
       "energy"
     ],
-    "effect": "Belegt keinen Platz. Stellt Energy-Ladungen auf Red-Button-Charms wieder her.",
-    "mods": {
-      "energy_restore": true
-    }
+    "effect": "Belegt keinen Platz. Stellt Energy-Ladungen auf Red-Button-Charms wieder her."
   },
   {
     "id": "golden-bell",
@@ -39,11 +30,6 @@
       "golden-mod",
       "symbols-bias"
     ],
-    "effect": "Glocken erscheinen +20% h\u00e4ufiger mit Golden-Mod.",
-    "mods": {
-      "golden_bias": {
-        "bell": 20
-      }
-    }
+    "effect": "Glocken erscheinen +20% h\u00e4ufiger mit Golden-Mod."
   }
 ]

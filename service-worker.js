@@ -1,2 +1,10 @@
-/* single SW 2025-10-02-14 */
-(function(){'use strict';var V='2025-10-02-14',C='cloverpit-'+V,A=['./','./index.html','./style.css?v='+V,'./manifest.webmanifest?v='+V,'./version.json?v='+V,'./icons/app-192.png','./icons/app-512.png','./charms.json?v='+V];self.addEventListener('install',function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(A);}));self.skipWaiting();});self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.map(function(x){if(x.indexOf('cloverpit-')===0&&x!==C)return caches.delete(x);return Promise.resolve();}));}));self.clients.claim();});self.addEventListener('fetch',function(e){var u=new URL(e.request.url),isH=u.pathname.endsWith('/')||u.pathname.endsWith('/index.html'),isV=u.pathname.endsWith('/version.json');if(isH||isV){e.respondWith(fetch(new Request(e.request,{cache:'no-store'})).then(function(r){var cp=r.clone();caches.open(C).then(function(c){c.put(e.request,cp);});return r;}).catch(function(){return caches.match(e.request);}));return;}e.respondWith(caches.match(e.request).then(function(r){return r||fetch(e.request).then(function(nr){var cp=nr.clone();caches.open(C).then(function(c){c.put(e.request,cp);});return nr;});}));});})();
+/* CloverPit SW single-file v 2025-10-02-15 */
+(function(){'use strict';var V='2025-10-02-15',C='cloverpit-'+V,A=['./','./index.html','./style.css?v='+V,'./manifest.webmanifest?v='+V,'./version.json?v='+V,'./icons/app-192.png','./icons/app-512.png','./charms.json?v='+V];
+self.addEventListener('install',function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(A);}));self.skipWaiting();});
+self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.map(function(x){if(x.indexOf('cloverpit-')===0&&x!==C)return caches.delete(x);return Promise.resolve();}));}));self.clients.claim();});
+self.addEventListener('fetch',function(e){
+  var u=new URL(e.request.url),isH=u.pathname.endsWith('/')||u.pathname.endsWith('/index.html'),isV=u.pathname.endsWith('/version.json');
+  if(isH||isV){e.respondWith(fetch(new Request(e.request,{cache:'no-store'})).then(function(r){var cp=r.clone();caches.open(C).then(function(c){c.put(e.request,cp);});return r;}).catch(function(){return caches.match(e.request);}));return;}
+  e.respondWith(caches.match(e.request).then(function(r){return r||fetch(e.request).then(function(nr){var cp=nr.clone();caches.open(C).then(function(c){c.put(e.request,cp);});return nr;});}));
+});
+})();
