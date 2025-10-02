@@ -39,7 +39,7 @@
       "golden-mod",
       "symbols-bias"
     ],
-    "effect": "Glocken erscheinen +20% häufiger mit Golden-Mod.",
+    "effect": "Glocken erscheinen +20% h\u00e4ufiger mit Golden-Mod.",
     "mods": {
       "golden_bias": {
         "bell": 20

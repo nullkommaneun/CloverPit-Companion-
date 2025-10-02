@@ -1,161 +1,40 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <title>CloverPit Companion</title>
-  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-13">
-  <link rel="icon" href="icons/app-192.png" sizes="192x192">
-  <meta name="theme-color" content="#0d1117">
-  <link rel="stylesheet" href="style.css?v=2025-10-02-13">
-  <script>(function(){if(window.__cpit_boot)return;window.__cpit_boot={ok:false,errs:[]};function e(){var e=document.getElementById('cpit_err_badge');if(e)return e;(e=document.createElement('div')).id='cpit_err_badge',e.setAttribute('role','status'),e.setAttribute('aria-live','assertive'),e.innerHTML='<div class="t">⚠️ Startproblem</div><div class="m"></div><div class="row"><button id="cpit_copy">Details kopieren</button><span class="small" id="cpit_count"></span></div>',document.documentElement.appendChild(e);return e}function t(e){try{return e?('string'==typeof e?e:e.stack?String(e.stack):e.message?String(e.message):JSON.stringify(e)):'Unbekannter Fehler'}catch(e){return'Unbekannter Fehler'}}function n(n){var r=e(),o=r.querySelector('.m'),i=r.querySelector('#cpit_count');o.textContent=n.slice(0,600),i.textContent='('+window.__cpit_boot.errs.length+' Fehler)';var c=r.querySelector('#cpit_copy');c.onclick=function(){try{var e=window.__cpit_boot.errs.join('\n');navigator.clipboard.writeText(e).then(function(){c.textContent='Kopiert',setTimeout(function(){c.textContent='Details kopieren'},1500)})}catch(e){alert('Kopieren nicht möglich')}}}function r(e,r){var o='['+e+'] '+t(r);window.__cpit_boot.errs.push(o),n(o);try{console.warn('[CloverPit boot]',e,r)}catch(e){}}window.addEventListener('error',function(e){r('error',e.error||e.message||e)}),window.addEventListener('unhandledrejection',function(e){r('unhandledrejection',e.reason||e)})})();</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloverPit Companion</title>
+<link rel="manifest" href="manifest.webmanifest?v=2025-10-02-14">
+<link rel="stylesheet" href="style.css?v=2025-10-02-14">
+<script>(function(){if(window.__cpit_boot)return;window.__cpit_boot={ok:false,errs:[]};function el(){var e=document.getElementById('cpit_err_badge');if(e)return e;e=document.createElement('div');e.id='cpit_err_badge';e.innerHTML='<div class="t">⚠️ Startproblem</div><div class="m"></div><button id="cpit_copy">Details kopieren</button>';document.documentElement.appendChild(e);return e}function msg(x){try{return typeof x==='string'?x:(x&&x.stack)||x.message||JSON.stringify(x)}catch(e){return'Startfehler'}}function show(m){var e=el();e.querySelector('.m').textContent=m;document.getElementById('cpit_copy').onclick=function(){navigator.clipboard.writeText(window.__cpit_boot.errs.join('\n'))}}function rep(k,err){var m='['+k+'] '+msg(err);window.__cpit_boot.errs.push(m);show(m);}window.addEventListener('error',function(e){rep('error',e.error||e.message||e)});window.addEventListener('unhandledrejection',function(e){rep('unhandledrejection',e.reason||e)});})();</script>
 </head>
 <body>
-  <div class="top-progress" id="topProgress"></div>
-  <header class="hdr">
-    <div class="wrap row space">
-      <div class="row gap">
-        <img src="icons/app-192.png" alt="Logo" class="logo">
-        <h1>🍀 CloverPit Companion</h1>
-      </div>
-      <div class="row gap">
-        <div id="versionBadge" class="ver-badge" aria-live="polite" hidden></div>
-        <button class="btn ghost" id="exportBtn">Export</button>
-        <button class="btn" id="importBtn">Import</button>
-        <input type="file" id="fileInput" accept="application/json" hidden>
-        <button class="btn primary" id="resetBtn">Reset</button>
-      </div>
-    </div>
-  </header>
+<div class="wrap">
+<h1>CloverPit Companion</h1>
+<div id="versionBadge"></div>
+<input id="coins" type="number" placeholder="Münzen">
+<input id="tickets" type="number" placeholder="Tickets">
+<ul id="charmList" class="charm-list"></ul>
+</div>
+<script>
+(function(){
+var VERSION='2025-10-02-14';
+function bust(u){return u+(u.indexOf('?')>=0?'&':'?')+'v='+VERSION;}
 
-  <main class="wrap">
-    <section class="panel pad">
-      <h2>Bestand</h2>
-      <div class="kpi">
-        <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
-        <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
-      </div>
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'});}
 
-      <hr class="sep">
-      <h2>Filter & Suche</h2>
-      <div class="toolbar">
-        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
-        <div class="chips" id="chips">
-          <button class="chip" data-chip="red-button">Red-Button</button>
-          <button class="chip" data-chip="golden-mod">Golden-Mod</button>
-          <button class="chip" data-chip="tickets">Tickets</button>
-          <button class="chip" data-chip="energy">Energy</button>
-        </div>
-        <select id="rarity" aria-label="Seltenheit">
-          <option value="">Seltenheit – alle</option>
-          <option>Common</option><option>Uncommon</option><option>Rare</option><option>Epic</option><option>Legendary</option>
-        </select>
-        <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
-      </div>
-    </section>
+function checkVersion(){fetch(bust('version.json'),{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var el=document.getElementById('versionBadge');el.textContent='v '+((d&&d.version)||'');});}
+checkVersion();
 
-    <section class="panel pad">
-      <h2>Aktive Effekte</h2>
-      <div id="stats" class="subtle"></div>
+var store={load:function(){try{return JSON.parse(localStorage.getItem('cpit')||'{}');}catch(e){return {};}},
+           save:function(d){localStorage.setItem('cpit',JSON.stringify(d));}};
+var state=Object.assign({coins:0,tickets:0,owned:{}},store.load());
 
-      <details id="listSection" class="fold" open>
-        <summary>
-          <span>Glücksbringer</span>
-          <span class="summary-badges">
-            <span class="pill" id="summaryFiltered">0 gefiltert</span>
-            <span class="pill" id="summaryOwned">0 besessen</span>
-          </span>
-        </summary>
-        <ul id="charmList" class="charm-list" aria-live="polite"></ul>
-      </details>
-      <div class="spacer"></div>
-    </section>
-  </main>
+document.getElementById('coins').value=state.coins;
+document.getElementById('tickets').value=state.tickets;
+document.getElementById('coins').addEventListener('input',function(e){state.coins=+e.target.value||0;store.save(state);});
+document.getElementById('tickets').addEventListener('input',function(e){state.tickets=+e.target.value||0;store.save(state);});
 
-  <nav class="dock" aria-label="Schnellleiste">
-    <button class="dock-btn" id="toggleOwned">Nur Besitz</button>
-    <button class="dock-btn" id="clearSearch">Suche löschen</button>
-    <button class="dock-btn" id="scrollTop">Nach oben</button>
-  </nav>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-<script type="module">
-(async () => {{
-  const VERSION = '2025-10-02-13';
-  const bust = (u)=> u + (u.includes('?')?'&':'?') + 'v=' + VERSION;
-
-  if ('serviceWorker' in navigator) {{
-    try{{ const reg = await navigator.serviceWorker.register('./service-worker.js', {{ updateViaCache: 'none' }});
-      document.addEventListener('visibilitychange', ()=>{{ if(document.visibilityState==='visible') reg.update(); }});
-      setInterval(()=>reg.update(), 30*60*1000);
-    }}catch(e){{ console.warn('SW-Register-Fehler', e); }}
-  }}
-
-  async function checkVersion(onLoad){{
-    try{{ const r = await fetch(bust('./version.json'), {{cache:'no-store'}}); const data = await r.json(); const v = data?.version || '';
-      const el = document.getElementById('versionBadge'); if (el) {{ el.textContent = 'v '+v; el.hidden=false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), onLoad?2500:1200); }}
-      localStorage.setItem('app_version', v);
-    }}catch(e){{ console.warn('version.json Problem', e); }}
-  }}
-  await checkVersion(true);
-
-  const topProgress = document.getElementById('topProgress');
-  const setProgress = (p)=> topProgress && topProgress.style.setProperty('--p', p+'%');
-  setProgress(20);
-
-  let CHARMS = [];
-  try{{ const res = await fetch(bust('charms.json')); setProgress(60); CHARMS = await res.json(); setProgress(100); }}catch(e){{ console.error('charms.json Fehler', e); }}
-  setTimeout(()=> topProgress && topProgress.classList.add('done'), 350);
-
-  const store = {{ load(){ try{{ return JSON.parse(localStorage.getItem('cpit')||'{{}}'); }}catch(e){{ return {{}}; }} }}, save(d){{ localStorage.setItem('cpit', JSON.stringify(d)); }} }};
-  const state = Object.assign({{ coins:0, tickets:0, owned:{{}}, filters:{{q:'',rarity:'',tag:'',ownedOnly:false}}, ui:{{listOpen:true}} }}, store.load());
-  const $ = s=>document.querySelector(s);
-  const listEl = $('#charmList'); const statsEl = $('#stats'); const listSection = $('#listSection');
-  const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
-
-  const coinsEl = document.getElementById('coins'); const ticketsEl = document.getElementById('tickets');
-  if (coinsEl) {{ coinsEl.value = state.coins; coinsEl.addEventListener('input', e=>{{ state.coins = +e.target.value||0; sync(); }}); }}
-  if (ticketsEl) {{ ticketsEl.value = state.tickets; ticketsEl.addEventListener('input', e=>{{ state.tickets = +e.target.value||0; sync(); }}); }}
-
-  const searchEl = document.getElementById('search'); const rarityEl = document.getElementById('rarity'); const ownedOnlyEl = document.getElementById('ownedOnly');
-  if (searchEl) {{ searchEl.value = state.filters.q; searchEl.addEventListener('input', e=>{{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }}); }}
-  if (rarityEl) {{ rarityEl.value = state.filters.rarity; rarityEl.addEventListener('change', e=>{{ state.filters.rarity = e.target.value; render(); sync(); }}); }}
-  if (ownedOnlyEl) {{ ownedOnlyEl.checked = state.filters.ownedOnly; ownedOnlyEl.addEventListener('change', e=>{{ state.filters.ownedOnly = e.target.checked; render(); sync(); }}); }}
-
-  const chipsEl = document.getElementById('chips');
-  if (chipsEl) {{ chipsEl.addEventListener('click', e=>{{ const chip = e.target.closest('[data-chip]'); if(!chip) return; const tag = chip.getAttribute('data-chip'); const isActive = chip.classList.toggle('active'); state.filters.tag = isActive ? tag : ''; render(); sync(); }}); }}
-
-  if (listSection) {{ listSection.open = !!state.ui.listOpen; listSection.addEventListener('toggle', ()=>{{ state.ui.listOpen = listSection.open; sync(); }}); }}
-
-  const resetBtn = document.getElementById('resetBtn');
-  resetBtn?.addEventListener('click', ()=>{{ if(confirm('Alles zurücksetzen?')){{ localStorage.removeItem('cpit'); location.reload(); }} }});
-
-  const exportBtn = document.getElementById('exportBtn');
-  exportBtn?.addEventListener('click', ()=>{{ const blob = new Blob([JSON.stringify(state,null,2)], {{type:'application/json'}}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {{href:url, download:'cloverpit-companion.json'}}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); }});
-
-  const importBtn = document.getElementById('importBtn'); const fileInput = document.getElementById('fileInput');
-  if (importBtn && fileInput) {{ importBtn.addEventListener('click', ()=> fileInput.click()); fileInput.addEventListener('change', e=>{{ const file = e.target.files && e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{{ try{{ const data = JSON.parse(reader.result); Object.assign(state, data); coinsEl&&(coinsEl.value = state.coins); ticketsEl&&(ticketsEl.value = state.tickets); render(); sync(); showToast('Import erfolgreich'); }}catch(e){{ showToast('Ungültige JSON-Datei'); }} }}; reader.readAsText(file); }}); }}
-
-  const toggleOwnedBtn = document.getElementById('toggleOwned'); const clearSearchBtn = document.getElementById('clearSearch'); const scrollTopBtn = document.getElementById('scrollTop');
-  if (toggleOwnedBtn && ownedOnlyEl) toggleOwnedBtn.addEventListener('click', ()=>{{ ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); }});
-  if (clearSearchBtn && searchEl) clearSearchBtn.addEventListener('click', ()=>{{ searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); }});
-  scrollTopBtn?.addEventListener('click', ()=> window.scrollTo({{top:0, behavior:'smooth'}}));
-
-  function sync(){{ store.save(state); updateStats(); }}
-  function updateStats(){{ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl && (statsEl.textContent = ownedCount + '/' + CHARMS.length + ' besessen · Tickets: ' + state.tickets + ' · Münzen: ' + state.coins); summaryOwned && (summaryOwned.textContent = ownedCount + ' besessen'); }}
-  function currentFiltered(){{ const q=state.filters.q; const rar=state.filters.rarity; const tag=state.filters.tag; const ownedOnly=state.filters.ownedOnly;
-    return (CHARMS||[]).filter(c=>{{ if(rar && c.rarity!==rar) return false; if(tag && !(c.tags||[]).includes(tag)) return false; if(q){{ const hay=(c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }} if(ownedOnly && !state.owned[c.id]) return false; return true; }}).sort((a,b)=> a.name.localeCompare(b.name)); }}
-  function highlight(text, query){{ if(!query) return text; const idx=text.toLowerCase().indexOf(query.toLowerCase()); if(idx<0) return text; return text.slice(0,idx)+'<mark>'+text.slice(idx,idx+query.length)+'</mark>'+text.slice(idx+query.length); }}
-
-  function render(){{ if(!listEl) return; const items=currentFiltered(); const q=state.filters.q; listEl.innerHTML=''; for(const c of items){{ const li=document.createElement('li'); li.className='charm-item'; li.dataset.id=c.id; const label=document.createElement('label'); const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id]; chk.addEventListener('change', e=>{{ state.owned[c.id]=e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked?('Hinzugefügt: '+c.name):('Entfernt: '+c.name)); }}); const container=document.createElement('div'); const name=document.createElement('div'); name.className='c-name'; name.innerHTML=highlight(c.name,q); const eff=document.createElement('div'); eff.className='c-effect'; eff.innerHTML=highlight(c.effect,q); const meta=document.createElement('div'); meta.className='c-meta'; const t=document.createElement('span'); t.className='pill'; t.textContent='🎟️ '+c.tickets; const r=document.createElement('span'); r.className='pill'; r.textContent=c.rarity; meta.appendChild(t); meta.appendChild(r); for(const tag of (c.tags||[])){{ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }} container.appendChild(name); container.appendChild(eff); container.appendChild(meta); label.appendChild(chk); label.appendChild(container); li.appendChild(label); listEl.appendChild(li); }} summaryFiltered && (summaryFiltered.textContent = items.length + ' gefiltert'); updateStats(); }}
-  function showToast(msg){{ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), 1600); }}
-  function microPulse(el,on){{ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on?'pulse-on':'pulse-off'); }}
-
-  render();
-
-}})();
+fetch(bust('charms.json')).then(function(r){return r.json()}).then(function(chars){var ul=document.getElementById('charmList');chars.forEach(function(c){var li=document.createElement('li');var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!state.owned[c.id];cb.onchange=function(e){state.owned[c.id]=e.target.checked;store.save(state);};li.appendChild(cb);li.appendChild(document.createTextNode(' '+c.name+' – '+c.effect));ul.appendChild(li);});});
+})();
 </script>
-
-</body>
-</html>
+</body></html>
