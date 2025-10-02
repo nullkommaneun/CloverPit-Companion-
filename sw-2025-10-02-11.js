@@ -1,15 +1,62 @@
 const VERSION='2025-10-02-11';
-const CACHE='cloverpit-'+VERSION;
-const ASSETS=['./','./index.html','./style.css?v='+VERSION,'./manifest.webmanifest?v='+VERSION,'./version.json?v='+VERSION,'./icons/app-192.png','./icons/app-512.png','./charms.json?v='+VERSION];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))); self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>(k.startsWith('cloverpit-')&&k!==CACHE)?caches.delete(k):null))))); self.clients.claim();});
-self.addEventListener('fetch',e=>{
-  const url=new URL(e.request.url);
-  const isHTML=url.pathname.endsWith('/')||url.pathname.endsWith('/index.html');
-  const isVersion=url.pathname.endsWith('/version.json');
-  if(isHTML||isVersion){
-    e.respondWith(fetch(new Request(e.request,{cache:'no-store'})).then(r=>{caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;}).catch(()=>caches.match(e.request)));
+const CACHE = 'cloverpit-' + VERSION;
+const ASSETS = [
+  './',
+  './index.html',
+  './style.css?v=' + VERSION,
+  './manifest.webmanifest?v=' + VERSION,
+  './version.json?v=' + VERSION,
+  './icons/app-192.png',
+  './icons/app-512.png',
+  './charms.json?v=' + VERSION
+];
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.map((k) => (k.startsWith('cloverpit-') && k !== CACHE) ? caches.delete(k) : Promise.resolve())
+    ))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  const isHTML = url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+  const isVersion = url.pathname.endsWith('/version.json');
+
+  if (isHTML || isVersion) {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: 'no-store' }))
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(event.request, copy));
+          return resp;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
-  e.respondWith(caches.match(e.request).then(resp=>resp||fetch(e.request).then(r=>{caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r;})));
+
+  event.respondWith(
+    caches.match(event.request).then((resp) => {
+      if (resp) return resp;
+      return fetch(event.request).then((networkResp) => {
+        const copy = networkResp.clone();
+        caches.open(CACHE).then((c) => c.put(event.request, copy));
+        return networkResp;
+      });
+    })
+  );
 });

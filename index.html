@@ -3,84 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CloverPit SW‑Selfcheck</title>
+  <title>CloverPit Companion</title>
   <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-11">
   <link rel="stylesheet" href="style.css?v=2025-10-02-11">
 </head>
 <body>
   <div class="wrap">
-    <h1>Service‑Worker Self‑Check</h1>
-    <p>Dieser Check prüft <code>service-worker.js</code> und die importierte Datei <code>sw-2025-10-02-11.js</code> auf Erreichbarkeit und Syntax.</p>
-    <div class="tbl">
-      <div>Scope (vermutet)</div><div id="scope"></div>
-      <div>SW URL</div><div id="swUrl"></div>
-      <div>SW Status</div><div id="swStatus"></div>
-      <div>SW Kopf</div><div><pre id="swHead"></pre></div>
-      <div>Import URL</div><div id="impUrl"></div>
-      <div>Import Status</div><div id="impStatus"></div>
-      <div>Import Kopf</div><div><pre id="impHead"></pre></div>
-      <div>Parsergebnis</div><div id="parseResult"></div>
-    </div>
-    <p><small>Tipp: Wenn hier HTML anfängt mit <code>&lt;!doctype</code> oder <code>&lt;html</code>, liefert GitHub Pages 404/Umleitungs‑HTML → Ursache des Fehlers.</small></p>
-    <p><button id="register">SW registrieren</button></p>
-    <div id="regResult"></div>
+    <h1>CloverPit Companion – Fix Build</h1>
+    <p>VERSION: <strong>2025-10-02-11</strong></p>
+    <button id="register">Service Worker registrieren</button>
+    <div id="out"></div>
   </div>
-
-<script type="module">
-const VERSION = "2025-10-02-11";
-const scope = location.origin + location.pathname.replace(/[^/]+$/, '');
-document.getElementById('scope').textContent = scope;
-const swUrl = new URL('./service-worker.js', scope).href;
-const impUrl = new URL('./sw-'+VERSION+'.js', scope).href;
-document.getElementById('swUrl').textContent = swUrl;
-document.getElementById('impUrl').textContent = impUrl;
-
-async function head(url){
-  try{
-    const r = await fetch(url+'?v='+VERSION, {cache:'no-store'});
-    const t = await r.text();
-    return { ok:r.ok, status:r.status, head: t.slice(0,180) };
-  }catch(e){
-    return { ok:false, status:'fetch error', head: String(e) };
-  }
-}
-
-function show(id, ok, status, headSel){
-  const sEl = document.getElementById(id);
-  sEl.textContent = (ok ? 'OK ' : 'FEHLER ') + '('+status+')';
-  sEl.className = ok ? 'good' : 'bad';
-  if (headSel) document.getElementById(headSel).textContent = headSel.includes('imp') ? window.__impHead : window.__swHead;
-}
-
-(async () => {
-  const sw = await head(swUrl);
-  window.__swHead = sw.head;
-  show('swStatus', sw.ok, sw.status, 'swHead');
-
-  const imp = await head(impUrl);
-  window.__impHead = imp.head;
-  show('impStatus', imp.ok, imp.status, 'impHead');
-
-  // Syntax‑Probe: versuche die importierte Datei zu parsen
-  try {
-    const code = await (await fetch(impUrl+'?v='+VERSION, {cache:'no-store'})).text();
-    new Function(code); // nur Parsing-Test
-    document.getElementById('parseResult').textContent = 'Syntax OK';
-    document.getElementById('parseResult').className = 'good';
-  } catch(e) {
-    document.getElementById('parseResult').textContent = 'Syntax FEHLER: '+(e.message||e);
-    document.getElementById('parseResult').className = 'bad';
-  }
-})();
-
-document.getElementById('register').addEventListener('click', async () => {
-  try {
-    const reg = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache:'none' });
-    document.getElementById('regResult').textContent = 'Registriert: ' + (reg.scope||'');
-  } catch(e) {
-    document.getElementById('regResult').textContent = 'Register-Fehler: ' + (e.message||e);
-  }
-});
-</script>
+  <script type="module">
+    document.getElementById('register').addEventListener('click', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache:'none' });
+        document.getElementById('out').textContent = 'Registriert: ' + (reg.scope||'');
+      } catch(e) {
+        document.getElementById('out').textContent = 'Register-Fehler: ' + (e && e.message ? e.message : e);
+      }
+    });
+  </script>
 </body>
 </html>
