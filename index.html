@@ -4,62 +4,261 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>CloverPit Companion</title>
+  <meta name="description" content="CloverPit Companion – Liste auswählen, Effekte sehen, Tickets & Münzen tracken." />
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="hdr">
     <div class="wrap row space">
       <h1>🍀 CloverPit Companion</h1>
+      <div class="row gap">
+        <button class="btn ghost" id="exportBtn">Export</button>
+        <button class="btn" id="importBtn">Import</button>
+        <input type="file" id="fileInput" accept="application/json" hidden>
+        <button class="btn primary" id="resetBtn" title="Alles zurücksetzen">Reset</button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap grid">
+  <main class="wrap">
     <section class="panel pad">
-      <h2>Glücksbringer</h2>
-      <div id="stats" class="footer"></div>
-      <ul id="charmList" class="charm-list"></ul>
+      <h2>Bestand</h2>
+      <div class="kpi">
+        <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
+        <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
+      </div>
+      <p class="subtle">Offline gespeichert (localStorage).</p>
+
+      <hr class="sep">
+      <h2>Filter & Suche</h2>
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
+        <select id="rarity" aria-label="Seltenheit">
+          <option value="">Seltenheit – alle</option>
+          <option>Common</option>
+          <option>Uncommon</option>
+          <option>Rare</option>
+          <option>Epic</option>
+          <option>Legendary</option>
+        </select>
+        <select id="tag" aria-label="Tag">
+          <option value="">Tag – alle</option>
+          <option value="red-button">Red‑Button</option>
+          <option value="golden-mod">Golden‑Mod</option>
+          <option value="tickets">Tickets</option>
+          <option value="energy">Energy</option>
+          <option value="interest">Interest</option>
+          <option value="random">Random‑Trigger</option>
+          <option value="patterns">Pattern‑Scaling</option>
+        </select>
+        <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
+      </div>
+    </section>
+
+    <section class="panel pad">
+      <h2>Aktive Effekte</h2>
+      <div id="stats" class="subtle"></div>
+      <div id="effectsBox">
+        <div class="row space">
+          <div class="fx-head">Zusammenfassung</div>
+          <span class="pill" id="effectsSummary">–</span>
+        </div>
+        <div id="effectsDetails" class="list"></div>
+      </div>
+
+      <h2>Glücksbringer (Liste)</h2>
+      <ul id="charmList" class="charm-list" aria-live="polite"></ul>
+      <div class="spacer"></div>
     </section>
   </main>
 
-<script>
-const CHARMS = [
-  {id:'bell-picture', name:'Bell Picture', effect:'Mehr Glocken (+2) in dieser Runde. +1 Energy.'},
-  {id:'car-battery', name:'Car Battery', effect:'Stellt alle Energy-Ladungen auf Red-Button-Charms wieder her.'},
-  {id:'cat-food', name:'Cat Food', effect:'+2 Spins pro Runde.'},
-  {id:'cherry-picture', name:'Cherry Picture', effect:'Mehr Kirschen (+2) in dieser Runde. +1 Energy.'}
-];
+  <nav class="dock" aria-label="Schnellleiste">
+    <button class="dock-btn" id="toggleOwned" title="Nur Besitz umschalten">Nur Besitz</button>
+    <button class="dock-btn" id="clearSearch" title="Suche leeren">Suche löschen</button>
+    <button class="dock-btn" id="scrollTop" title="Nach oben">Nach oben</button>
+  </nav>
 
-const state = JSON.parse(localStorage.getItem('cpit')||'{}');
-state.owned = state.owned||{};
+<script type="module">
+// ------------------- Load dataset -------------------
+const res = await fetch('charms.json');
+const CHARMS = await res.json();
 
-const listEl = document.getElementById('charmList');
+// ------------------- Persistenz -------------------
+const store = {
+  load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; },
+  save(d){ localStorage.setItem('cpit', JSON.stringify(d)); }
+};
+const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false} }, store.load());
 
+// ------------------- UI Hooks -------------------
+const $ = s=>document.querySelector(s);
+const listEl = $('#charmList');
+const statsEl = $('#stats');
+
+$('#coins').value = state.coins; $('#tickets').value = state.tickets;
+$('#coins').addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); });
+$('#tickets').addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); });
+
+$('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#tag').value = state.filters.tag; $('#ownedOnly').checked = state.filters.ownedOnly;
+$('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
+$('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
+$('#tag').addEventListener('change', e=>{ state.filters.tag = e.target.value; render(); sync(); });
+$('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
+
+$('#resetBtn').addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
+$('#exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+$('#importBtn').addEventListener('click', ()=> $('#fileInput').click());
+$('#fileInput').addEventListener('change', e=>{
+  const file = e.target.files?.[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      Object.assign(state, data);
+      $('#coins').value = state.coins; $('#tickets').value = state.tickets;
+      render(); sync();
+    }catch{ alert('Ungültige JSON-Datei.'); }
+  };
+  reader.readAsText(file);
+});
+
+// Dock
+$('#toggleOwned').addEventListener('click', ()=>{ const el=$('#ownedOnly'); el.checked=!el.checked; el.dispatchEvent(new Event('change')); });
+$('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); });
+$('#scrollTop').addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+function sync(){ store.save(state); updateStats(); renderEffects(); }
+
+function updateStats(){
+  const ownedCount = Object.values(state.owned).filter(Boolean).length;
+  statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`;
+}
+
+// ------------------- Rendering -------------------
 function render(){
+  const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
+  const items = CHARMS.filter(c=>{
+    if(rar && c.rarity!==rar) return false;
+    if(tag && !(c.tags||[]).includes(tag)) return false;
+    if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(ownedOnly && !state.owned[c.id]) return false;
+    return true;
+  }).sort((a,b)=> a.name.localeCompare(b.name));
+
   listEl.innerHTML = '';
-  for(const c of CHARMS){
-    const li = document.createElement('li');
-    li.className = 'charm-item';
+  for(const c of items){
+    const li = document.createElement('li'); li.className = 'charm-item';
     const label = document.createElement('label');
-    label.className = 'row space';
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.checked = !!state.owned[c.id];
-    chk.addEventListener('change', e=>{ state.owned[c.id]=chk.checked; save(); });
-    const text = document.createElement('span');
-    text.textContent = c.name + ' – ' + c.effect;
-    label.appendChild(chk); label.appendChild(text);
+
+    const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
+    chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); });
+
+    const container = document.createElement('div');
+    const name = document.createElement('div'); name.className='c-name'; name.textContent=c.name;
+    const eff = document.createElement('div'); eff.className='c-effect'; eff.textContent=c.effect;
+
+    const meta = document.createElement('div'); meta.className='c-meta';
+    const t = document.createElement('span'); t.className='pill'; t.textContent = `🎟️ ${c.tickets}`;
+    const r = document.createElement('span'); r.className='pill'; r.textContent = c.rarity;
+    meta.appendChild(t); meta.appendChild(r);
+    for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
+
+    container.appendChild(name); container.appendChild(eff); container.appendChild(meta);
+
+    label.appendChild(chk); label.appendChild(container);
     li.appendChild(label);
     listEl.appendChild(li);
   }
-  document.getElementById('stats').textContent = Object.values(state.owned).filter(Boolean).length + '/' + CHARMS.length + ' besessen';
-}
-
-function save(){
-  localStorage.setItem('cpit', JSON.stringify(state));
-  render();
+  updateStats();
+  renderEffects();
 }
 
 render();
+
+// ------------------- Effekte aggregieren -------------------
+function computeEffects(){
+  const eff = {
+    energy_end:0, spins:0, interest_pct:0, luck_flat:0, tickets_instant:0,
+    ticket_mod_symbol_chance_pct:0, ticket_mod_cap_pct:0, multiplier_symbol_base:0,
+    row_base:0, symbol_base:{}, notes:[]
+  };
+  for(const c of CHARMS){
+    if(!state.owned[c.id]) continue;
+    const m = c.mods||{};
+    if(m.energy_end) eff.energy_end += m.energy_end;
+    if(m.spins) eff.spins += m.spins;
+    if(m.interest_pct) eff.interest_pct += m.interest_pct;
+    if(m.multiplier_symbol_base) eff.multiplier_symbol_base += m.multiplier_symbol_base;
+    if(m.row_base) eff.row_base += m.row_base;
+    if(m.symbol_base){
+      for(const [sym,val] of Object.entries(m.symbol_base)){
+        eff.symbol_base[sym] = (eff.symbol_base[sym]||0)+val;
+      }
+    }
+    if(m.tickets_instant) eff.tickets_instant += m.tickets_instant;
+    if(m.ticket_mod_symbol_chance_pct) eff.ticket_mod_symbol_chance_pct += m.ticket_mod_symbol_chance_pct;
+    if(m.ticket_mod_cap_pct && m.ticket_mod_cap_pct>eff.ticket_mod_cap_pct) eff.ticket_mod_cap_pct = m.ticket_mod_cap_pct;
+    if(m.luck_on_trigger) eff.notes.push(`Luck +${m.luck_on_trigger} (zufällig)`);
+    if(m.luck_next_spin) eff.notes.push(`Luck +${m.luck_next_spin} (nächster Spin)`);
+    if(m.luck_last_spin) eff.notes.push(`Luck +${m.luck_last_spin} (letzter Spin)`);
+    if(m.energy_restore) eff.notes.push('Energy‑Aufladungen werden wiederhergestellt');
+    if(m.double_red_button) eff.notes.push('Red‑Button‑Fähigkeiten doppelt');
+    if(m.extra_trigger_red_button) eff.notes.push(`Red‑Button zusätzlich: +${m.extra_trigger_red_button}× Auslösung`);
+    if(m.golden_bias) eff.notes.push('Golden‑Mod: Symbol‑Bias aktiv');
+    if(m.red_button_bias) eff.notes.push('Red‑Button: Symbol‑Bias aktiv');
+    if(m.coins_from_debt_pct) eff.notes.push(`Sofort Coins: ${m.coins_from_debt_pct}% der Schuld`);
+    if(m.combo_multiplier) eff.notes.push('Combo‑Multiplikator aktiv');
+    if(m.tickets_interest) eff.notes.push('Ticket‑Zinsen: +1 je 3 (max 10) am Deadline‑Ende');
+    if(m.interest_decay_pct) eff.notes.push(`Zinsen verfallen: −${m.interest_decay_pct}% pro Runde`);
+  }
+  return eff;
+}
+
+function renderEffects(){
+  const eff = computeEffects();
+  const sumEl = document.getElementById('effectsSummary');
+  const detEl = document.getElementById('effectsDetails');
+  if(!sumEl||!detEl) return;
+
+  const parts = [];
+  if(eff.spins) parts.push(`Spins +${eff.spins}`);
+  if(eff.energy_end) parts.push(`Energy/Deadline +${eff.energy_end}`);
+  if(eff.interest_pct) parts.push(`Zinsen +${eff.interest_pct}%`);
+  if(eff.multiplier_symbol_base) parts.push(`Symbol‑Multiplikator +${eff.multiplier_symbol_base}`);
+  if(Object.keys(eff.symbol_base).length) parts.push(`Symbol‑Basiswerte aktiv`);
+  if(eff.row_base) parts.push(`Reihen‑Basis ${eff.row_base>0?'+':''}${eff.row_base}`);
+  if(eff.tickets_instant) parts.push(`Tickets sofort +${eff.tickets_instant}`);
+  if(eff.ticket_mod_symbol_chance_pct) parts.push(`Ticket‑Mod‑Chance +${eff.ticket_mod_symbol_chance_pct}% (Cap ${eff.ticket_mod_cap_pct||'—'}%)`);
+  sumEl.textContent = parts.length? parts.join(' · ') : 'Keine dauerhaften Basiseffekte';
+
+  detEl.innerHTML = '';
+  if(Object.keys(eff.symbol_base).length || eff.row_base){
+    const card = document.createElement('div'); card.className='card';
+    const title = document.createElement('div'); title.className='c-name'; title.textContent='Basiswerte';
+    const fx = document.createElement('div'); fx.className='c-effect';
+    const symParts = Object.entries(eff.symbol_base).map(([k,v])=>`${k}: ${v>0?'+':''}${v}`);
+    const sections = [];
+    if(symParts.length) sections.push(`Symbole → ${symParts.join(', ')}`);
+    if(eff.row_base) sections.push(`Reihen → ${eff.row_base>0?'+':''}${eff.row_base}`);
+    fx.textContent = sections.join(' | ');
+    card.appendChild(title); card.appendChild(fx);
+    detEl.appendChild(card);
+  }
+  if(eff.notes.length){
+    const card = document.createElement('div'); card.className='card';
+    const title = document.createElement('div'); title.className='c-name'; title.textContent='Konditionale Effekte';
+    const fx = document.createElement('div'); fx.className='c-effect'; fx.textContent = eff.notes.join(' · ');
+    card.appendChild(title); card.appendChild(fx);
+    detEl.appendChild(card);
+  }
+}
+
+renderEffects();
 </script>
 </body>
 </html>
