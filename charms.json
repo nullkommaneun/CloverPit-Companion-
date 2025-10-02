@@ -4,32 +4,319 @@
     "name": "Bell Picture",
     "tickets": 4,
     "rarity": "Uncommon",
-    "tags": [
-      "red-button",
-      "energy",
-      "symbols-bias"
-    ],
-    "effect": "Red-Button: Mehr Glocken (+2) in dieser Runde. Am Deadline-Ende +1 Energy."
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Glocken erscheinen +2 häufiger in dieser Runde. Am Deadline-Ende +1 Energy."
   },
   {
     "id": "car-battery",
     "name": "Car Battery",
     "tickets": 1,
     "rarity": "Rare",
-    "tags": [
-      "energy"
-    ],
+    "tags": ["energy","utility"],
     "effect": "Belegt keinen Platz. Stellt Energy-Ladungen auf Red-Button-Charms wieder her."
+  },
+  {
+    "id": "cat-food",
+    "name": "Cat Food",
+    "tickets": 4,
+    "rarity": "Common",
+    "tags": ["spin"],
+    "effect": "+2 Spins pro Runde."
+  },
+  {
+    "id": "cherry-picture",
+    "name": "Cherry Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Cherries erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "clove-picture",
+    "name": "Clove Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Clover erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "clover-voucher",
+    "name": "Clover Voucher",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["utility"],
+    "effect": "Belegt keinen Platz. Gewährt sofort 4 Tickets."
+  },
+  {
+    "id": "cloverpet",
+    "name": "Cloverpet",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["multiplier"],
+    "effect": "Symbols multiplier +1 für je 5 Tickets, die du besitzt."
+  },
+  {
+    "id": "cloverpot",
+    "name": "Cloverpot",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["economy"],
+    "effect": "Am Ende jeder Deadline: +1 Ticket für je 3 Tickets, die du besitzt (maximal 10)."
+  },
+  {
+    "id": "coins-picture",
+    "name": "Coins Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Münzen erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "diamond-picture",
+    "name": "Diamond Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Diamanten erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "fake-coin",
+    "name": "Fake Coin",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["random-trigger","luck"],
+    "effect": "10 % Chance: +1 extra Spin, dann Luck +4 für diesen Spin."
   },
   {
     "id": "golden-bell",
     "name": "Golden Bell",
     "tickets": 2,
     "rarity": "Common",
-    "tags": [
-      "golden-mod",
-      "symbols-bias"
-    ],
-    "effect": "Glocken erscheinen +20% h\u00e4ufiger mit Golden-Mod."
+    "tags": ["golden-mod","symbols-bias"],
+    "effect": "Glocken haben +20 % Chance, mit goldenem Modifikator aufzutreten."
+  },
+  {
+    "id": "golden-cherry",
+    "name": "Golden Cherry",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": ["golden-mod"],
+    "effect": "Cherries haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "golden-clover",
+    "name": "Golden Clover",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": ["golden-mod"],
+    "effect": "Clover haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "golden-coins",
+    "name": "Golden Coins",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["golden-mod"],
+    "effect": "Münzen haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "golden-diamonds",
+    "name": "Golden Diamonds",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["golden-mod"],
+    "effect": "Diamanten haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "golden-lemon",
+    "name": "Golden Lemon",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": ["golden-mod"],
+    "effect": "Lemons haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "golden-seven",
+    "name": "Golden Seven",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["golden-mod"],
+    "effect": "Sevens haben +20 % Chance, golden zu erscheinen."
+  },
+  {
+    "id": "grandmas-purse",
+    "name": "Grandma’s Purse",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["economy"],
+    "effect": "Interest steigt um 15 %, verringert sich um 3 % pro Runde. Verworfen, wenn Bonus 0 erreicht."
+  },
+  {
+    "id": "green-pepper",
+    "name": "Green Pepper",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["random-trigger","luck"],
+    "effect": "15 % Chance: Luck +7 für den aktuellen Spin. Verworfen nach 9 Aktivierungen."
+  },
+  {
+    "id": "hamsa",
+    "name": "Hamsa",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["last-spin","luck"],
+    "effect": "Gewährt Luck +7 für den letzten Spin einer Runde."
+  },
+  {
+    "id": "holy-bible",
+    "name": "Holy Bible",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["protection"],
+    "effect": "Wenn 666 ausgelöst würde, wird es in normale Symbole umgewandelt und dieser Charm verworfen."
+  },
+  {
+    "id": "horseshoe",
+    "name": "Horseshoe",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["multiplier","random-trigger"],
+    "effect": "Charms mit „random trigger“ aktivieren doppelt so häufig."
+  },
+  {
+    "id": "lemon-picture",
+    "name": "Lemon Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Lemons erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "lost-briefcase",
+    "name": "Lost Briefcase",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["utility","debt"],
+    "effect": "Belegt keinen Platz. Sofort +30 % der Schuldsumme verdienen."
+  },
+  {
+    "id": "lucky-cat",
+    "name": "Lucky Cat",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["pattern","interest"],
+    "effect": "Wenn 3+ Muster in einem Spin ausgelöst werden: bekommst Geld entsprechend deinem aktuellen Zins."
+  },
+  {
+    "id": "megaphone",
+    "name": "Megaphone",
+    "tickets": 7,
+    "rarity": "Epic",
+    "tags": ["red-phone","multiplier"],
+    "effect": "Alle Red-Phone Effekte aktivieren sich doppelt. Verringert Charm-Platz um 1."
+  },
+  {
+    "id": "nuclear-button",
+    "name": "Nuclear Button",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["red-button","multiplier"],
+    "effect": "Alle Charm-Effekte, die durch Red Button ausgelöst werden, wirken ein zusätzliches Mal. Verringert Charm-Platz um 1."
+  },
+  {
+    "id": "number-1",
+    "name": "Number 1",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbol-trigger"],
+    "effect": "Red-Button: Yellow Symbole (z. B. Lemons, Cherries) lösen einmal mehr aus. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "number-2",
+    "name": "Number 2",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbol-trigger"],
+    "effect": "Red-Button: Nicht-Yellow Symbole lösen einmal mehr aus. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "pentacle",
+    "name": "Pentacle",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": ["multiplier","scaling"],
+    "effect": "Symbols multiplier +1. Bonus wächst um 1, wenn 5+ Muster in einem Spin ausgelöst werden."
+  },
+  {
+    "id": "raging-capitalist",
+    "name": "Raging Capitalist",
+    "tickets": 4,
+    "rarity": "Epic",
+    "tags": ["ticket-chance"],
+    "effect": "+2 % Chance, dass ein Ticket-Modifikator auf ein Symbol angewandt wird. Steigt bei jedem Charm-Kauf um 1 % (Max 25 %)."
+  },
+  {
+    "id": "red-pepper",
+    "name": "Red Pepper",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["random-trigger","luck"],
+    "effect": "20 % Chance: Luck +5 für den aktuellen Spin. Verworfen nach 12 Aktivierungen."
+  },
+  {
+    "id": "red-shiny-rock",
+    "name": "Red Shiny Rock",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["red-button","luck"],
+    "effect": "Red-Button (3/3 Energy): Grants Luck +4 für den nächsten Spin. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "seven-picture",
+    "name": "Seven Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": ["red-button","symbols-bias"],
+    "effect": "Red-Button: Sieben erscheinen +2 häufiger. Am Deadline-Ende +1 Energy."
+  },
+  {
+    "id": "shrooms",
+    "name": "Shrooms",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["pattern-multiplier"],
+    "effect": "Wenn 3+ Muster in einem Spin ausgelöst werden, verdoppelt sich der Wert aller Symbole bis Ende der Runde."
+  },
+  {
+    "id": "stain",
+    "name": "Stain",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["pattern-buff"],
+    "effect": "Wenn 3+ Muster in einem Spin ausgelöst werden, erhöht sich jeder Musterwert um seinen Basiswert bis Ende der Runde."
+  },
+  {
+    "id": "stonks",
+    "name": "Stonks",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["interest"],
+    "effect": "Erhöht den Zinssatz um 5 %."
+  },
+  {
+    "id": "tarot-deck",
+    "name": "Tarot Deck",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": ["random-effect"],
+    "effect": "Beim Deadline-Ende: Zufälliger Effekt (z. B. +Spins, Symbol Boosts usw.)."
+  },
+  {
+    "id": "toy-train",
+    "name": "Toy Train",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": ["luck"],
+    "effect": "Wenn die letzten zwei Spins keinen Gewinn brachten: Luck +5 beim nächsten Spin."
   }
 ]
