@@ -16,34 +16,5 @@
         "bell": 2
       }
     }
-  },
-  {
-    "id": "car-battery",
-    "name": "Car Battery",
-    "tickets": 1,
-    "rarity": "Rare",
-    "tags": [
-      "energy"
-    ],
-    "effect": "Belegt keinen Platz. Stellt Energy-Ladungen auf Red-Button-Charms wieder her.",
-    "mods": {
-      "energy_restore": true
-    }
-  },
-  {
-    "id": "golden-bell",
-    "name": "Golden Bell",
-    "tickets": 2,
-    "rarity": "Common",
-    "tags": [
-      "golden-mod",
-      "symbols-bias"
-    ],
-    "effect": "Glocken erscheinen +20% häufiger mit Golden-Mod.",
-    "mods": {
-      "golden_bias": {
-        "bell": 20
-      }
-    }
   }
 ]

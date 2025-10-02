@@ -2,223 +2,76 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>CloverPit Companion</title>
-  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-09">
-  <link rel="icon" href="icons/app-192.png" sizes="192x192">
-  <meta name="theme-color" content="#0d1117">
-  <link rel="stylesheet" href="style.css?v=2025-10-02-09">
+  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-10">
+  <link rel="stylesheet" href="style.css?v=2025-10-02-10">
   <script>
-(function(){
+(function(){ 
   if (window.__cpit_boot) return;
   window.__cpit_boot = { ok:false, errs:[] };
-  function badge(msg){
-    var id='cpit_err_badge', el=document.getElementById(id);
-    if(!el){ el=document.createElement('div'); el.id=id; el.setAttribute('role','status');
-      el.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:#2b0f13;color:#ffd1d1;padding:8px 10px;border:1px solid #5a1a1f;border-radius:10px;font:12px system-ui;max-width:70vw;box-shadow:0 6px 18px rgba(0,0,0,.35)';
-      document.documentElement.appendChild(el);
-    }
-    el.textContent = msg || '⚠️ Startproblem – Details in Konsole';
+  function ensureBadge(){ 
+    var el=document.getElementById('cpit_err_badge'); 
+    if(el) return el;
+    el=document.createElement('div'); el.id='cpit_err_badge'; el.setAttribute('role','status'); el.setAttribute('aria-live','assertive');
+    el.innerHTML='<div class="t">⚠️ Startproblem</div><div class="m"></div><div class="row"><button id="cpit_copy">Details kopieren</button><span class="small" id="cpit_count"></span></div>';
+    document.documentElement.appendChild(el); 
+    return el;
+  }
+  function textOf(err){ 
+    try{ 
+      if(!err) return 'Unbekannter Fehler';
+      if(typeof err==='string') return err;
+      if(err.stack) return String(err.stack);
+      if(err.message) return String(err.message);
+      return JSON.stringify(err);
+    }catch(e){ return 'Unbekannter Fehler'; }
+  }
+  function updateBadge(msg){
+    var el=ensureBadge();
+    var m=el.querySelector('.m'); var c=el.querySelector('#cpit_count');
+    m.textContent = msg.slice(0,600);
+    c.textContent = '('+window.__cpit_boot.errs.length+' Fehler)';
+    var copyBtn = el.querySelector('#cpit_copy');
+    copyBtn.onclick = function(){
+      try{ 
+        var all = window.__cpit_boot.errs.join('\n');
+        navigator.clipboard.writeText(all).then(()=>{copyBtn.textContent='Kopiert'; setTimeout(()=>copyBtn.textContent='Details kopieren',1500);});
+      }catch(e){ alert('Kopieren nicht möglich'); }
+    };
   }
   function report(kind, err){
-    try{
-      var msg = (err && (err.message||err.reason||err)) || 'unknown';
-      __cpit_boot.errs.push(kind+': '+msg);
-      badge();
-      console.warn('[CloverPit boot]', kind, err);
-    }catch(e){}
+    var msg = '['+kind+'] '+ textOf(err);
+    window.__cpit_boot.errs.push(msg);
+    updateBadge(msg);
+    try{ console.warn('[CloverPit boot]', kind, err); }catch(_ ){}
   }
-  window.addEventListener('error', function(e){ report('error', e.error||e.message); });
+  window.addEventListener('error', function(e){ report('error', e.error||e.message||e); });
   window.addEventListener('unhandledrejection', function(e){ report('unhandledrejection', e.reason||e); });
 })();
 </script>
 </head>
 <body>
-  <div class="top-progress" id="topProgress"></div>
   <header class="hdr">
     <div class="wrap row space">
-      <div class="row gap">
-        <img src="icons/app-192.png" alt="Logo" class="logo">
-        <h1>🍀 CloverPit Companion</h1>
-      </div>
-      <div class="row gap">
-        <div id="versionBadge" class="ver-badge" aria-live="polite" hidden></div>
-        <button class="btn ghost" id="exportBtn">Export</button>
-        <button class="btn" id="importBtn">Import</button>
-        <input type="file" id="fileInput" accept="application/json" hidden>
-        <button class="btn primary" id="resetBtn">Reset</button>
-        <button class="btn install" id="installBtn" hidden>Installieren</button>
-      </div>
+      <div class="row gap"><img class="logo" src="icons/app-192.png" alt=""><h1>🍀 CloverPit Companion</h1></div>
+      <div class="row gap"><div id="versionBadge" class="ver-badge" hidden></div></div>
     </div>
   </header>
-
   <main class="wrap">
-    <section class="panel pad">
-      <h2>Bestand</h2>
-      <div class="kpi">
-        <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
-        <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
-      </div>
-
-      <hr class="sep">
-      <h2>Filter & Suche</h2>
-      <div class="toolbar">
-        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
-        <div class="chips" id="chips">
-          <button class="chip" data-chip="red-button">Red-Button</button>
-          <button class="chip" data-chip="golden-mod">Golden-Mod</button>
-          <button class="chip" data-chip="tickets">Tickets</button>
-          <button class="chip" data-chip="energy">Energy</button>
-        </div>
-        <select id="rarity" aria-label="Seltenheit">
-          <option value="">Seltenheit – alle</option>
-          <option>Common</option><option>Uncommon</option><option>Rare</option><option>Epic</option><option>Legendary</option>
-        </select>
-        <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
-      </div>
-    </section>
-
-    <section class="panel pad">
-      <h2>Aktive Effekte</h2>
-      <div id="stats" class="subtle"></div>
-
-      <details id="listSection" class="fold" open>
-        <summary>
-          <span>Glücksbringer</span>
-          <span class="summary-badges">
-            <span class="pill" id="summaryFiltered">0 gefiltert</span>
-            <span class="pill" id="summaryOwned">0 besessen</span>
-          </span>
-        </summary>
-        <ul id="charmList" class="charm-list" aria-live="polite"></ul>
-      </details>
-      <div class="spacer"></div>
-    </section>
+    <p>Fehlerausgabe ist jetzt **explizit** sichtbar (auch mobil). Teste den Button:</p>
+    <button id="testError">Testfehler</button>
   </main>
-
-  <nav class="dock" aria-label="Schnellleiste">
-    <button class="dock-btn" id="toggleOwned">Nur Besitz</button>
-    <button class="dock-btn" id="clearSearch">Suche löschen</button>
-    <button class="dock-btn" id="scrollTop">Nach oben</button>
-  </nav>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-<script type="module">
-(async () => {{
-  const VERSION = '2025-10-02-09';
-  const bust = (u)=> u + (u.includes('?')?'&':'?') + 'v=' + VERSION;
-  const delay = (ms)=> new Promise(r=>setTimeout(r,ms));
-  function waitForControllerChange(ms=5000){{
-    return new Promise(res=>{{
-      const t=setTimeout(res,ms);
-      navigator.serviceWorker?.addEventListener('controllerchange',()=>{{clearTimeout(t);res();}},{{once:true}});
-    }});
-  }}
-  async function swReadyOrTimeout(ms=5000){{
-    const readyP = navigator.serviceWorker?.ready?.then(()=>true).catch(()=>false);
-    const ctrlP  = waitForControllerChange(ms).then(()=>true);
-    const toP    = delay(ms).then(()=>false);
-    const res = await Promise.race([readyP, ctrlP, toP]);
-    return !!res;
-  }}
-
-  // Install prompt
-  let deferredPrompt; const installBtn = document.getElementById('installBtn');
-  window.addEventListener('beforeinstallprompt', (e)=>{{ e.preventDefault(); deferredPrompt = e; if(installBtn) installBtn.hidden = false; }});
-  installBtn?.addEventListener('click', async ()=>{{ installBtn.disabled = true; if(deferredPrompt){{ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }} installBtn.hidden = true; }});
-
-  // SW register
-  if ('serviceWorker' in navigator) {{
-    const reg = await navigator.serviceWorker.register('./service-worker.js', {{ updateViaCache: 'none' }});
-    navigator.serviceWorker.addEventListener('controllerchange', ()=>location.reload());
-    document.addEventListener('visibilitychange', ()=>{{ if(document.visibilityState==='visible') reg.update(); }});
-    setInterval(()=>reg.update(), 30*60*1000);
-  }}
-  await swReadyOrTimeout(5000);
-
-  // Version badge
-  async function checkVersion(onLoad){{
-    try{{ const r = await fetch(bust('./version.json'), {{cache:'no-store'}}); const data = await r.json(); const v = data?.version || '';
-      const last = localStorage.getItem('app_version');
-      const el = document.getElementById('versionBadge'); if (el) {{ el.textContent = 'v '+v; el.hidden=false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), onLoad?2500:1200); }}
-      if (last && last!==v && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
-      localStorage.setItem('app_version', v);
-    }}catch(e){{ console.warn('version.json Problem', e); }}
-  }}
-  await checkVersion(true); setTimeout(()=>checkVersion(false), 8000);
-
-  // Progress
-  const topProgress = document.getElementById('topProgress');
-  const setProgress = (p)=> topProgress && topProgress.style.setProperty('--p', p+'%');
-  setProgress(20);
-
-  // Load charms
-  let CHARMS = [];
-  try{{ const res = await fetch(bust('charms.json')); setProgress(60); CHARMS = await res.json(); setProgress(100); }}catch(e){{ console.error('charms.json Fehler', e); }}
-  setTimeout(()=> topProgress && topProgress.classList.add('done'), 350);
-
-  // State
-  const store = {{ load(){{ try{{ return JSON.parse(localStorage.getItem('cpit')||'{{}}'); }}catch{{ return {{}}; }} }}, save(d){{ localStorage.setItem('cpit', JSON.stringify(d)); }} }};
-  const state = Object.assign({{ coins:0, tickets:0, owned:{{}}, filters:{{q:'',rarity:'',tag:'',ownedOnly:false}}, ui:{{listOpen:true}} }}, store.load());
-  const $ = s=>document.querySelector(s);
-  const listEl = $('#charmList'); const statsEl = $('#stats'); const listSection = $('#listSection');
-  const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
-
-  // Inputs
-  const coinsEl = document.getElementById('coins'); const ticketsEl = document.getElementById('tickets');
-  if (coinsEl) {{ coinsEl.value = state.coins; coinsEl.addEventListener('input', e=>{{ state.coins = +e.target.value||0; sync(); }}); }}
-  if (ticketsEl) {{ ticketsEl.value = state.tickets; ticketsEl.addEventListener('input', e=>{{ state.tickets = +e.target.value||0; sync(); }}); }}
-
-  const searchEl = document.getElementById('search'); const rarityEl = document.getElementById('rarity'); const ownedOnlyEl = document.getElementById('ownedOnly');
-  if (searchEl) {{ searchEl.value = state.filters.q; searchEl.addEventListener('input', e=>{{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }}); }}
-  if (rarityEl) {{ rarityEl.value = state.filters.rarity; rarityEl.addEventListener('change', e=>{{ state.filters.rarity = e.target.value; render(); sync(); }}); }}
-  if (ownedOnlyEl) {{ ownedOnlyEl.checked = state.filters.ownedOnly; ownedOnlyEl.addEventListener('change', e=>{{ state.filters.ownedOnly = e.target.checked; render(); sync(); }}); }}
-
-  const chipsEl = document.getElementById('chips');
-  if (chipsEl) {{ chipsEl.addEventListener('click', e=>{{ const chip = e.target.closest('[data-chip]'); if(!chip) return; const tag = chip.getAttribute('data-chip'); const isActive = chip.classList.toggle('active'); state.filters.tag = isActive ? tag : ''; render(); sync(); }}); }}
-
-  if (listSection) {{ listSection.open = !!state.ui.listOpen; listSection.addEventListener('toggle', ()=>{{ state.ui.listOpen = listSection.open; sync(); }}); }}
-
-  const resetBtn = document.getElementById('resetBtn');
-  resetBtn?.addEventListener('click', ()=>{{ if(confirm('Alles zurücksetzen?')){{ localStorage.removeItem('cpit'); location.reload(); }} }});
-
-  const exportBtn = document.getElementById('exportBtn');
-  exportBtn?.addEventListener('click', ()=>{{ const blob = new Blob([JSON.stringify(state,null,2)], {{type:'application/json'}}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {{href:url, download:'cloverpit-companion.json'}}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); }});
-
-  const importBtn = document.getElementById('importBtn'); const fileInput = document.getElementById('fileInput');
-  if (importBtn && fileInput) {{ importBtn.addEventListener('click', ()=> fileInput.click()); fileInput.addEventListener('change', e=>{{ const file = e.target.files && e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{{ try{{ const data = JSON.parse(reader.result); Object.assign(state, data); coinsEl&&(coinsEl.value = state.coins); ticketsEl&&(ticketsEl.value = state.tickets); render(); sync(); showToast('Import erfolgreich'); }}catch{{ showToast('Ungültige JSON-Datei'); }} }}; reader.readAsText(file); }}); }}
-
-  const toggleOwnedBtn = document.getElementById('toggleOwned'); const clearSearchBtn = document.getElementById('clearSearch'); const scrollTopBtn = document.getElementById('scrollTop');
-  if (toggleOwnedBtn && ownedOnlyEl) toggleOwnedBtn.addEventListener('click', ()=>{{ ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); }});
-  if (clearSearchBtn && searchEl) clearSearchBtn.addEventListener('click', ()=>{{ searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); }});
-  scrollTopBtn?.addEventListener('click', ()=> window.scrollTo({{top:0, behavior:'smooth'}}));
-
-  function sync(){{ store.save(state); updateStats(); }}
-  function updateStats(){{ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl && (statsEl.textContent = ownedCount + '/' + CHARMS.length + ' besessen · Tickets: ' + state.tickets + ' · Münzen: ' + state.coins); summaryOwned && (summaryOwned.textContent = ownedCount + ' besessen'); }}
-  function currentFiltered(){{ const q=state.filters.q; const rar=state.filters.rarity; const tag=state.filters.tag; const ownedOnly=state.filters.ownedOnly;
-    return (CHARMS||[]).filter(c=>{{ if(rar && c.rarity!==rar) return false; if(tag && !(c.tags||[]).includes(tag)) return false; if(q){{ const hay=(c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }} if(ownedOnly && !state.owned[c.id]) return false; return true; }}).sort((a,b)=> a.name.localeCompare(b.name)); }}
-  function highlight(text, query){{ if(!query) return text; const idx=text.toLowerCase().indexOf(query.toLowerCase()); if(idx<0) return text; return text.slice(0,idx)+'<mark>'+text.slice(idx,idx+query.length)+'</mark>'+text.slice(idx+query.length); }}
-
-  function render(){{ if(!listEl) return; const items=currentFiltered(); const q=state.filters.q; listEl.innerHTML=''; for(const c of items){{ const li=document.createElement('li'); li.className='charm-item'; li.dataset.id=c.id; const label=document.createElement('label'); const chk=document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id]; chk.addEventListener('change', e=>{{ state.owned[c.id]=e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked?('Hinzugefügt: '+c.name):('Entfernt: '+c.name)); }}); const container=document.createElement('div'); const name=document.createElement('div'); name.className='c-name'; name.innerHTML=highlight(c.name,q); const eff=document.createElement('div'); eff.className='c-effect'; eff.innerHTML=highlight(c.effect,q); const meta=document.createElement('div'); meta.className='c-meta'; const t=document.createElement('span'); t.className='pill'; t.textContent='🎟️ '+c.tickets; const r=document.createElement('span'); r.className='pill'; r.textContent=c.rarity; meta.appendChild(t); meta.appendChild(r); for(const tag of (c.tags||[])){{ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }} container.appendChild(name); container.appendChild(eff); container.appendChild(meta); label.appendChild(chk); label.appendChild(container); li.appendChild(label); listEl.appendChild(li); }} summaryFiltered && (summaryFiltered.textContent = items.length + ' gefiltert'); updateStats(); }}
-  function showToast(msg){{ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), 1600); }}
-  function microPulse(el,on){{ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on?'pulse-on':'pulse-off'); }}
-
-  render();
-
-  // Diagnostics after small delay
-  async function runDiagnostics(){{ const issues=[];
-    try{{ const r = await fetch(bust('./version.json'), {{cache:'no-store'}}); const d = await r.json(); if(!d||!d.version) issues.push('version.json leer/ungültig'); }}catch{{ issues.push('version.json nicht erreichbar'); }}
-    if(!Array.isArray(CHARMS)||!CHARMS.length) issues.push('charms.json leer/nicht geladen');
-    ['#charmList','#exportBtn','#resetBtn'].forEach(sel=>{{ if(!document.querySelector(sel)) issues.push('UI fehlt: '+sel); }});
-    if(!navigator.serviceWorker.controller) issues.push('Kein aktiver Service Worker');
-    if(issues.length) console.warn('Diagnosefehler:', issues);
-  }}
-  setTimeout(runDiagnostics, 1200);
-
-  if (window.__cpit_boot) window.__cpit_boot.ok = true;
-}})();
-</script>
-
+  <script type="module">
+    const VERSION = "2025-10-02-10";
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' });
+      navigator.serviceWorker.addEventListener('controllerchange', ()=>location.reload());
+    }
+    fetch('./version.json?v='+VERSION, {cache:'no-store'}).then(r=>r.json()).then(d=>{
+      const el=document.getElementById('versionBadge'); if(el){ el.textContent='v '+(d.version||''); el.hidden=false; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2000); }
+    });
+    document.getElementById('testError')?.addEventListener('click', ()=>{ Promise.reject(new Error('Absichtlicher Testfehler für die Badge-Ausgabe')); });
+  </script>
 </body>
 </html>
