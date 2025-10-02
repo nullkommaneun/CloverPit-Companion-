@@ -1,4 +1,5 @@
-const CACHE = 'cloverpit-v1';
+const VERSION = '2025-10-02-01';
+const CACHE = `cloverpit-${VERSION}`;
 const ASSETS = [
   './',
   './index.html',
@@ -6,8 +7,13 @@ const ASSETS = [
   './charms.json',
   './manifest.webmanifest',
   './icons/app-192.png',
-  './icons/app-512.png'
+  './icons/app-512.png',
+  './version.json'
 ];
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
@@ -16,22 +22,33 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE ? caches.delete(k) : null)))
+    caches.keys().then(keys => Promise.all(keys.map(k => (k.startsWith('cloverpit-') && k !== CACHE) ? caches.delete(k) : null)))
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (ASSETS.includes(url.pathname.replace(self.registration.scope.replace(/\/$/, ''), '.'))) {
-    event.respondWith(caches.match(event.request));
+  const scope = self.registration.scope.replace(/\/$/, '');
+  const path = url.pathname.startsWith(scope) ? '.' + url.pathname.slice(scope.length) : url.pathname;
+
+  const isHtml = path === './' or path.endswith('/index.html');
+  const isVersion = path.endswith('/version.json');
+
+  if (isHtml || isVersion) {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: 'no-store' }))
+        .then(resp => { caches.open(CACHE).then(c => c.put(event.request, resp.clone())); return resp; })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
+
   event.respondWith(
-   caches.match(event.request).then(resp => resp || fetch(event.request).then(networkResp => {
+    caches.match(event.request).then(resp => resp || fetch(event.request).then(networkResp => {
       const copy = networkResp.clone();
-      caches.open(CACHE).then(cache => cache.put(event.request, copy));
+      caches.open(CACHE).then(c => c.put(event.request, copy));
       return networkResp;
-    }).catch(() => caches.match('./index.html')))
+    }))
   );
 });
