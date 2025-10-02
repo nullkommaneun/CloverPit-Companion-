@@ -9,6 +9,28 @@
   <link rel="apple-touch-icon" href="icons/app-192.png">
   <meta name="theme-color" content="#0d1117">
   <link rel="stylesheet" href="style.css">
+<script>
+(function(){
+  if (window.__cpit_boot) return;
+  window.__cpit_boot = { ok:false, errs:[] };
+  function report(kind, err){
+    try{
+      var msg = (err && (err.message||err.reason||err)) || 'unknown';
+      __cpit_boot.errs.push(kind+': '+msg);
+      var id='cpit_err_badge', el=document.getElementById(id);
+      if(!el){
+        el=document.createElement('div'); el.id=id; el.setAttribute('role','status');
+        el.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;background:#2b0f13;color:#ffd1d1;padding:8px 10px;border:1px solid #5a1a1f;border-radius:10px;font:12px system-ui;max-width:70vw;box-shadow:0 6px 18px rgba(0,0,0,.35)';
+        el.textContent='Warning: startup issue - see console';
+        document.documentElement.appendChild(el);
+      }
+      console.warn('[CloverPit boot]', kind, err);
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){ report('error', e.error||e.message); });
+  window.addEventListener('unhandledrejection', function(e){ report('unhandledrejection', e.reason||e); });
+})();
+</script>
 </head>
 <body>
   <div class="top-progress" id="topProgress"></div>
@@ -16,14 +38,14 @@
     <div class="wrap row space">
       <div class="row gap">
         <img src="icons/app-192.png" alt="CloverPit Companion Logo" class="logo">
-        <h1>🍀 CloverPit Companion</h1>
+        <h1>CloverPit Companion</h1>
       </div>
       <div class="row gap">
         <div id="versionBadge" class="ver-badge" aria-live="polite" hidden></div>
         <button class="btn ghost" id="exportBtn">Export</button>
         <button class="btn" id="importBtn">Import</button>
         <input type="file" id="fileInput" accept="application/json" hidden>
-        <button class="btn primary" id="resetBtn" title="Alles zurücksetzen">Reset</button>
+        <button class="btn primary" id="resetBtn" title="Alles zuruecksetzen">Reset</button>
         <button class="btn install" id="installBtn" hidden>Installieren</button>
       </div>
     </div>
@@ -33,17 +55,17 @@
     <section class="panel pad">
       <h2>Bestand</h2>
       <div class="kpi">
-        <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
+        <div class="box"><label for="coins">Muenzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
         <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
       </div>
 
       <hr class="sep">
       <h2>Filter & Suche</h2>
       <div class="toolbar">
-        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
+        <input type="text" id="search" placeholder="Suche Name/Effekt" autocomplete="off" />
         <div class="chips" id="chips">
-          <button class="chip" data-chip="red-button">Red‑Button</button>
-          <button class="chip" data-chip="golden-mod">Golden‑Mod</button>
+          <button class="chip" data-chip="red-button">Red-Button</button>
+          <button class="chip" data-chip="golden-mod">Golden-Mod</button>
           <button class="chip" data-chip="tickets">Tickets</button>
           <button class="chip" data-chip="energy">Energy</button>
           <button class="chip" data-chip="interest">Interest</button>
@@ -51,7 +73,7 @@
           <button class="chip" data-chip="patterns">Patterns</button>
         </div>
         <select id="rarity" aria-label="Seltenheit">
-          <option value="">Seltenheit – alle</option>
+          <option value="">Seltenheit - alle</option>
           <option>Common</option>
           <option>Uncommon</option>
           <option>Rare</option>
@@ -72,14 +94,14 @@
       <div id="effectsBox">
         <div class="row space">
           <div class="fx-head">Zusammenfassung</div>
-          <span class="pill badge" id="effectsSummary">–</span>
+          <span class="pill badge" id="effectsSummary">-</span>
         </div>
         <div id="effectsDetails" class="list"></div>
       </div>
 
       <details id="listSection" class="fold" open>
         <summary>
-          <span>Glücksbringer</span>
+          <span>Gluecksbringer</span>
           <span class="summary-badges">
             <span class="pill" id="summaryFiltered">0 gefiltert</span>
             <span class="pill" id="summaryOwned">0 besessen</span>
@@ -93,7 +115,7 @@
 
   <nav class="dock" aria-label="Schnellleiste">
     <button class="dock-btn" id="toggleOwned">Nur Besitz</button>
-    <button class="dock-btn" id="clearSearch">Suche löschen</button>
+    <button class="dock-btn" id="clearSearch">Suche loeschen</button>
     <button class="dock-btn" id="scrollTop">Nach oben</button>
   </nav>
 
@@ -102,12 +124,10 @@
 <script type="module">
 (async () => {
   try {
-    // Install prompt
     let deferredPrompt; const installBtn = document.getElementById('installBtn');
-    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.hidden = false; });
-    installBtn?.addEventListener('click', async ()=>{ installBtn.disabled = true; if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; } installBtn.hidden = true; });
+    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; if(installBtn) installBtn.hidden = false; });
+    if (installBtn) installBtn.addEventListener('click', async ()=>{ installBtn.disabled = true; if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; } installBtn.hidden = true; });
 
-    // SW + version badge
     async function registerSW(){
       if(!('serviceWorker' in navigator)) return;
       const reg = await navigator.serviceWorker.register('./service-worker.js');
@@ -120,7 +140,8 @@
     async function checkVersion(onLoad){
       try{
         const r = await fetch('./version.json', {cache:'no-store'});
-        const {version} = await r.json();
+        const data = await r.json();
+        const version = data && data.version || '';
         const last = localStorage.getItem('app_version');
         showVersion(version, onLoad);
         if(last && last !== version && navigator.serviceWorker.controller){
@@ -139,69 +160,132 @@
     }
     await registerSW();
 
-    // Progress
     const topProgress = document.getElementById('topProgress');
-    const setProgress = (p)=> topProgress?.style.setProperty('--p', p + '%');
+    const setProgress = (p)=>{ if(topProgress) topProgress.style.setProperty('--p', p + '%'); };
     setProgress(20);
 
-    // Load charms
     let CHARMS = [];
     try {
       const res = await fetch('charms.json'); setProgress(60);
       CHARMS = await res.json(); setProgress(100);
-    } catch (e) { console.error('charms.json Fehler', e); }
-    setTimeout(()=> topProgress?.classList.add('done'), 350);
+    } catch (e) {
+      console.error('charms.json error', e);
+    }
+    setTimeout(()=> topProgress && topProgress.classList.add('done'), 350);
 
-    // State
     const store = { load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; }, save(d){ localStorage.setItem('cpit', JSON.stringify(d)); } };
     const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false}, ui:{listOpen:true} }, store.load());
 
     const $ = s=>document.querySelector(s);
-    const listEl = $('#charmList'); const statsEl = $('#stats'); const toastEl = $('#toast');
-    const listSection = $('#listSection'); const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
+    const listEl = $('#charmList'); const statsEl = $('#stats'); const listSection = $('#listSection');
+    const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
 
-    // Inputs
-    const coinsEl = document.getElementById('coins'); const ticketsEl = document.getElementById('tickets');
-    coinsEl && (coinsEl.value = state.coins, coinsEl.addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); }));
-    ticketsEl && (ticketsEl.value = state.tickets, ticketsEl.addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); }));
+    const coinsEl = document.getElementById('coins');
+    const ticketsEl = document.getElementById('tickets');
+    if (coinsEl) { coinsEl.value = state.coins; coinsEl.addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); }); }
+    if (ticketsEl) { ticketsEl.value = state.tickets; ticketsEl.addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); }); }
 
-    const searchEl = document.getElementById('search'); const rarityEl = document.getElementById('rarity'); const ownedOnlyEl = document.getElementById('ownedOnly');
-    searchEl && (searchEl.value = state.filters.q, searchEl.addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }));
-    rarityEl && (rarityEl.value = state.filters.rarity, rarityEl.addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); }));
-    ownedOnlyEl && (ownedOnlyEl.checked = state.filters.ownedOnly, ownedOnlyEl.addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); }));
+    const searchEl = document.getElementById('search');
+    const rarityEl = document.getElementById('rarity');
+    const ownedOnlyEl = document.getElementById('ownedOnly');
+    if (searchEl) { searchEl.value = state.filters.q; searchEl.addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }); }
+    if (rarityEl) { rarityEl.value = state.filters.rarity; rarityEl.addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); }); }
+    if (ownedOnlyEl) { ownedOnlyEl.checked = state.filters.ownedOnly; ownedOnlyEl.addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); }); }
 
-    document.getElementById('chips')?.addEventListener('click', e=>{ const chip = e.target.closest('[data-chip]'); if(!chip) return; const tag = chip.getAttribute('data-chip'); const isActive = chip.classList.toggle('active'); state.filters.tag = isActive ? tag : ''; render(); sync(); });
+    const chipsEl = document.getElementById('chips');
+    if (chipsEl) {
+      chipsEl.addEventListener('click', e=>{
+        const chip = e.target.closest('[data-chip]'); if(!chip) return;
+        const tag = chip.getAttribute('data-chip');
+        const isActive = chip.classList.toggle('active');
+        state.filters.tag = isActive ? tag : '';
+        render(); sync();
+      });
+    }
 
-    listSection && (listSection.open = !!state.ui.listOpen, listSection.addEventListener('toggle', ()=>{ state.ui.listOpen = listSection.open; sync(); }));
+    if (listSection) {
+      listSection.open = !!state.ui.listOpen;
+      listSection.addEventListener('toggle', ()=>{ state.ui.listOpen = listSection.open; sync(); });
+    }
 
-    document.getElementById('resetBtn')?.addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
-    document.getElementById('exportBtn')?.addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); });
-    document.getElementById('importBtn')?.addEventListener('click', ()=> document.getElementById('fileInput')?.click());
-    document.getElementById('fileInput')?.addEventListener('change', e=>{ const file = e.target.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const data = JSON.parse(reader.result); Object.assign(state, data); coinsEl&&(coinsEl.value = state.coins); ticketsEl&&(ticketsEl.value = state.tickets); render(); sync(); showToast('Import erfolgreich'); }catch{ showToast('Ungültige JSON-Datei'); } }; reader.readAsText(file); });
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) resetBtn.addEventListener('click', ()=>{ if(confirm('Alles zuruecksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
 
-    document.getElementById('toggleOwned')?.addEventListener('click', ()=>{ if(!ownedOnlyEl) return; ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); });
-    document.getElementById('clearSearch')?.addEventListener('click', ()=>{ if(!searchEl) return; searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); });
-    document.getElementById('scrollTop')?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'});
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      showToast('Export abgeschlossen');
+    });
+
+    const importBtn = document.getElementById('importBtn');
+    const fileInput = document.getElementById('fileInput');
+    if (importBtn && fileInput) {
+      importBtn.addEventListener('click', ()=> fileInput.click());
+      fileInput.addEventListener('change', e=>{
+        const file = e.target.files && e.target.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          try{
+            const data = JSON.parse(reader.result);
+            Object.assign(state, data);
+            if (coinsEl) coinsEl.value = state.coins;
+            if (ticketsEl) ticketsEl.value = state.tickets;
+            render(); sync(); showToast('Import erfolgreich');
+          }catch{ showToast('Ungueltige JSON-Datei'); }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    const toggleOwnedBtn = document.getElementById('toggleOwned');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const scrollTopBtn = document.getElementById('scrollTop');
+    if (toggleOwnedBtn && ownedOnlyEl) toggleOwnedBtn.addEventListener('click', ()=>{ ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); });
+    if (clearSearchBtn && searchEl) clearSearchBtn.addEventListener('click', ()=>{ searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche geloescht'); });
+    if (scrollTopBtn) scrollTopBtn.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
 
     function sync(){ store.save(state); updateStats(); renderEffects(); }
-    function updateStats(){ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl && (statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`); summaryOwned && (summaryOwned.textContent = ownedCount + ' besessen'); }
-    function currentFiltered(){ const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly; return (CHARMS||[]).filter(c=>{ if(rar && c.rarity!==rar) return False; if(tag and !(c.tags||[]).includes(tag)) return False; if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return False; } if(ownedOnly and !state.owned[c.id]) return False; return True; }).sort((a,b)=> a.name.localeCompare(b.name)); }
-
-    function highlight(text, query){ if(!query) return text; const idx = text.toLowerCase().indexOf(query.toLowerCase()); if(idx<0) return text; const before = text.slice(0, idx); const match = text.slice(idx, idx+query.length); const after = text.slice(idx+query.length); return `${before}<mark>${match}</mark>${after}`; }
-
+    function updateStats(){
+      const ownedCount = Object.values(state.owned).filter(Boolean).length;
+      if (statsEl) statsEl.textContent = ownedCount + '/' + CHARMS.length + ' besessen - Tickets: ' + state.tickets + ' - Muenzen: ' + state.coins;
+      if (summaryOwned) summaryOwned.textContent = ownedCount + ' besessen';
+    }
+    function currentFiltered(){
+      const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
+      return (CHARMS||[]).filter(c=>{
+        if(rar && c.rarity!==rar) return false;
+        if(tag && !(c.tags||[]).includes(tag)) return false;
+        if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }
+        if(ownedOnly && !state.owned[c.id]) return false;
+        return true;
+      }).sort((a,b)=> a.name.localeCompare(b.name));
+    }
+    function highlight(text, query){
+      if(!query) return text;
+      const idx = text.toLowerCase().indexOf(query.toLowerCase());
+      if(idx<0) return text;
+      const before = text.slice(0, idx);
+      const match = text.slice(idx, idx+query.length);
+      const after = text.slice(idx+query.length);
+      return before+'<mark>'+match+'</mark>'+after;
+    }
     function render(){
       if (!listEl) return;
-      const items = currentFiltered(); const q = state.filters.q; listEl.innerHTML = '';
+      const items = currentFiltered(); const q = state.filters.q;
+      listEl.innerHTML = '';
       for(const c of items){
         const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
         const label = document.createElement('label');
         const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
-        chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`); if(navigator.vibrate) try{ navigator.vibrate(7); }catch{} });
+        chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? ('Hinzugefuegt: '+c.name) : ('Entfernt: '+c.name)); });
         const container = document.createElement('div');
         const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
         const eff = document.createElement('div'); eff.className='c-effect'; eff.innerHTML = highlight(c.effect, q);
         const meta = document.createElement('div'); meta.className='c-meta';
-        const t = document.createElement('span'); t.className='pill'; t.textContent = `🎟️ ${c.tickets}`;
+        const t = document.createElement('span'); t.className='pill'; t.textContent = 'Tickets '+c.tickets;
         const r = document.createElement('span'); r.className='pill'; r.textContent = c.rarity;
         meta.appendChild(t); meta.appendChild(r);
         for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
@@ -210,37 +294,31 @@
         li.appendChild(label);
         listEl.appendChild(li);
       }
-      summaryFiltered && (summaryFiltered.textContent = items.length + ' gefiltert');
+      if (summaryFiltered) summaryFiltered.textContent = items.length + ' gefiltert';
       updateStats(); renderEffects();
     }
-    function renderEffects(){ const sumEl = document.getElementById('effectsSummary'); if(sumEl){ sumEl.textContent = '–'; sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); } }
+    function renderEffects(){ const sumEl = document.getElementById('effectsSummary'); if(sumEl){ sumEl.textContent = '-'; sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); } }
     function showToast(msg){ const el = document.getElementById('toast'); if(!el) return; el.textContent = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), 1600); }
     function microPulse(el, on){ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on ? 'pulse-on' : 'pulse-off'); }
 
     render(); renderEffects();
 
-    // Diagnostics
+    // Silent diagnostics
     async function runDiagnostics() {
       const issues = [];
-      try {
-        const r = await fetch('./version.json', { cache: 'no-store' });
-        const data = await r.json();
-        if (!data || !data.version) issues.push('Version.json leer/ungültig');
-      } catch { issues.push('Version.json nicht erreichbar'); }
-
+      try { const r = await fetch('./version.json', { cache: 'no-store' }); const data = await r.json(); if (!data || !data.version) issues.push('version.json leer/ungueltig'); } catch { issues.push('version.json nicht erreichbar'); }
       if (!Array.isArray(CHARMS) || CHARMS.length === 0) issues.push('charms.json leer/nicht geladen');
-
-      ['#charmList', '#exportBtn', '#resetBtn'].forEach(sel => { if (!document.querySelector(sel)) issues.push('UI fehlt: ' + sel); });
-
+      ['#charmList', '#exportBtn', '#resetBtn'].forEach(sel => { if (!document.querySelector(sel)) issues.push('UI fehlt: '+sel); });
       if (!navigator.serviceWorker.controller) issues.push('Kein aktiver Service Worker');
-
-      if (issues.length) { console.warn('Diagnosefehler:', issues); showToast('⚠️ Diagnose: ' + issues.join(' | ')); }
+      if (issues.length) { console.warn('Diagnosefehler:', issues); showToast('Diagnose: '+issues.join(' | ')); }
     }
-    setTimeout(runDiagnostics, 1800);
+    setTimeout(runDiagnostics, 1000);
+
+    if (window.__cpit_boot) window.__cpit_boot.ok = true;
 
   } catch (fatal) {
     console.error('Fataler Init-Fehler', fatal);
-    const el = document.getElementById('toast'); if (el) { el.textContent = '⚠️ Startfehler: ' + (fatal.message||fatal); el.classList.add('show'); }
+    const el = document.getElementById('toast'); if (el) { el.textContent = 'Startfehler: ' + (fatal.message||fatal); el.classList.add('show'); }
   }
 })();
 </script>
