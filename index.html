@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>CloverPit Companion</title>
+  <meta name="description" content="Tracke Glücksbringer, Effekte, Münzen & Tickets – offlinefähig" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hdr">
+    <div class="wrap row space">
+      <h1>🍀 CloverPit Companion</h1>
+      <div class="row gap">
+        <button class="btn ghost" id="exportBtn" aria-label="Export">Export</button>
+        <button class="btn" id="importBtn" aria-label="Import">Import</button>
+        <input type="file" id="fileInput" accept="application/json" hidden>
+        <button class="btn primary" id="resetBtn" title="Alles zurücksetzen" aria-label="Reset">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <!-- Linke Spalte: Konten & Filter -->
+    <section class="panel pad">
+      <h2>Bestand</h2>
+      <div class="kpi">
+        <div class="box"><label for="coins">Münzen</label><input type="number" id="coins" min="0" step="1" inputmode="numeric"/></div>
+        <div class="box"><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
+      </div>
+      <div class="footer">Werte werden lokal gespeichert (offlinefähig).</div>
+
+      <hr class="sep">
+      <h2>Filter</h2>
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off"/>
+        <select id="rarity">
+          <option value="">Seltenheit – alle</option>
+          <option>Common</option>
+          <option>Uncommon</option>
+          <option>Rare</option>
+          <option>Epic</option>
+          <option>Legendary</option>
+        </select>
+        <select id="tag">
+          <option value="">Tag – alle</option>
+          <option value="red-button">Red‑Button</option>
+          <option value="golden-mod">Golden‑Mod</option>
+          <option value="tickets">Tickets</option>
+          <option value="energy">Energy</option>
+          <option value="interest">Interest</option>
+          <option value="random">Random‑Trigger</option>
+          <option value="patterns">Pattern‑Scaling</option>
+        </select>
+        <label class="tag"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
+      </div>
+    </section>
+
+    <!-- Rechte Spalte: Liste -->
+    <section class="panel pad">
+      <h2>Glücksbringer</h2>
+      <div id="stats" class="footer"></div>
+
+      <div class="box" id="effectsBox">
+        <div class="row space mb8">
+          <div class="fx-head">Aktive Effekte (aus gewählten Charms)</div>
+          <span class="tag" id="effectsSummary">–</span>
+        </div>
+        <div id="effectsDetails" class="list"></div>
+      </div>
+
+      <div class="list" id="list" aria-live="polite"></div>
+      <div class="spacer"></div>
+    </section>
+  </main>
+
+  <!-- Bottom Action Bar for mobile one-handed use -->
+  <nav class="dock">
+    <button class="dock-btn" id="scrollTop" aria-label="Nach oben">▲</button>
+    <button class="dock-btn" id="toggleOwned" aria-label="Nur Besitz umschalten">Besitz</button>
+    <button class="dock-btn" id="clearSearch" aria-label="Suche leeren">Clear</button>
+  </nav>
+
+<script>
+// --- Datenmodell ---------------------------------------------------------
+/**
+ * Charm Schema
+ * id: string (slug)
+ * name: string (Original-Ingame)
+ * effect: string (Kurzbeschreibung DE)
+ * tickets: number (Kosten in Tickets)
+ * rarity: 'Common'|'Uncommon'|'Rare'|'Epic'|'Legendary'
+ * tags: string[]
+ * mods: strukturierte Effekte (siehe Einträge)
+ */
+const CHARMS = [
+  {id:'bell-picture', name:'Bell Picture', tickets:4, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Glocken (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{bell:+2}}},
+  {id:'car-battery', name:'Car Battery', tickets:1, rarity:'Rare', tags:['energy'], effect:'Belegt keinen Platz. Stellt alle Energy‑Ladungen auf Red‑Button‑Charms wieder her.', mods:{energy_restore:true}},
+  {id:'cat-food', name:'Cat Food', tickets:4, rarity:'Rare', tags:['spins'], effect:'+2 Spins pro Runde.', mods:{spins:+2}},
+  {id:'cherry-picture', name:'Cherry Picture', tickets:4, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Kirschen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{cherry:+2}}},
+  {id:'clover-picture', name:'Clover Picture', tickets:4, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Kleeblätter (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{clover:+2}}},
+  {id:'clover-voucher', name:'Clover Voucher', tickets:2, rarity:'Epic', tags:['tickets'], effect:'Belegt keinen Platz. Gewährt sofort 4 Tickets.', mods:{tickets_instant:+4}},
+  {id:'cloverpet', name:'Cloverpet', tickets:2, rarity:'Rare', tags:['multiplier','tickets'], effect:'Symbol‑Multiplikator +1 je 5 Tickets im Besitz.', mods:{mult_sym_per_5tickets:+1}},
+  {id:'cloverpot', name:'Cloverpot', tickets:2, rarity:'Rare', tags:['tickets','interest'], effect:'Am Ende jeder Deadline: +1 Ticket je 3 vorhandene (max 10).', mods:{tickets_interest:true}},
+  {id:'coins-picture', name:'Coins Picture', tickets:3, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Münzen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{coin:+2}}},
+  {id:'diamond-picture', name:'Diamond Picture', tickets:3, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Diamanten (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{diamond:+2}}},
+  {id:'fake-coin', name:'Fake Coin', tickets:2, rarity:'Rare', tags:['random','spins','luck'], effect:'10% zufällig: +1 Extra‑Spin, danach Luck +4 für diesen Spin.', mods:{chance_extra_spin:10,luck_on_trigger:+4}},
+  {id:'golden-bell', name:'Golden Bell', tickets:2, rarity:'Common', tags:['golden-mod','symbols-bias'], effect:'Glocken erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{bell:+20}}},
+  {id:'golden-cherry', name:'Golden Cherry', tickets:2, rarity:'Common', tags:['golden-mod','symbols-bias'], effect:'Kirschen erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{cherry:+20}}},
+  {id:'golden-clover', name:'Golden Clover', tickets:2, rarity:'Common', tags:['golden-mod','symbols-bias'], effect:'Kleeblätter erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{clover:+20}}},
+  {id:'golden-coins', name:'Golden Coins', tickets:3, rarity:'Uncommon', tags:['golden-mod','symbols-bias'], effect:'Münzen erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{coin:+20}}},
+  {id:'golden-diamonds', name:'Golden Diamonds', tickets:3, rarity:'Uncommon', tags:['golden-mod','symbols-bias'], effect:'Diamanten erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{diamond:+20}}},
+  {id:'golden-lemon', name:'Golden Lemon', tickets:2, rarity:'Common', tags:['golden-mod','symbols-bias'], effect:'Zitronen erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{lemon:+20}}},
+  {id:'golden-seven', name:'Golden Seven', tickets:3, rarity:'Uncommon', tags:['golden-mod','symbols-bias'], effect:'Sieben erscheinen +20% häufiger mit Golden‑Mod.', mods:{golden_bias:{seven:+20}}},
+  {id:'grandmas-purse', name:"Grandma's Purse", tickets:3, rarity:'Rare', tags:['interest'], effect:'Zinsen +15%, sinken nach jeder Runde um 3%. Entfernt sich bei 0.', mods:{interest_pct:+15, interest_decay_pct:3}},
+  {id:'green-pepper', name:'Green Pepper', tickets:2, rarity:'Common', tags:['random','luck','charges'], effect:'15% zufällig: Luck +7 für aktuellen Spin. Entfernt sich nach 9 Auslösungen.', mods:{luck_on_trigger:+7, trigger_chance_pct:15, charges:9}},
+  {id:'hamsa', name:'Hamsa', tickets:3, rarity:'Uncommon', tags:['luck'], effect:'Luck +7 beim letzten Spin einer Runde.', mods:{luck_last_spin:+7}},
+  {id:'holy-bible', name:'Holy Bible', tickets:1, rarity:'Common', tags:['safety'], effect:'Wenn 666 auslösen würde: in normale Symbole wandeln und Charm entfernen.', mods:{anti_666:true}},
+  {id:'horseshoe', name:'Horseshoe', tickets:3, rarity:'Uncommon', tags:['random'], effect:'"Triggers Randomly"‑Effekte treten doppelt so oft auf.', mods:{double_random_triggers:true}},
+  {id:'lemon-picture', name:'Lemon Picture', tickets:4, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Zitronen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{lemon:+2}}},
+  {id:'lost-briefcase', name:'Lost Briefcase', tickets:2, rarity:'Rare', tags:['coins'], effect:'Belegt keinen Platz. Sofort +30% der aktuellen Schuld als Geld.', mods:{coins_from_debt_pct:30}},
+  {id:'lucky-cat', name:'Lucky Cat', tickets:1, rarity:'Rare', tags:['interest','patterns'], effect:'Bei ≥3 Patterns im Spin: Geld in Höhe der aktuellen Zinsen.', mods:{payout_equal_interest_on_3patterns:true}},
+  {id:'megaphone', name:'Megaphone', tickets:7, rarity:'Legendary', tags:['red-button','energy'], effect:'Alle roten Telefon‑Fähigkeiten doppelt. Charm‑Slots −1.', mods:{double_red_button:true, slots_delta:-1}},
+  {id:'nuclear-button', name:'Nuclear Button', tickets:3, rarity:'Legendary', tags:['red-button'], effect:'Alle Red‑Button‑Charms lösen einmal zusätzlich aus. Charm‑Slots −1.', mods:{extra_trigger_red_button:+1, slots_delta:-1}},
+  {id:'number-1', name:'Number 1', tickets:3, rarity:'Epic', tags:['red-button','patterns','energy'], effect:'Red‑Button: Gelbe Symbol‑Patterns lösen 1× zusätzlich aus. +1 Energy am Deadline‑Ende.', mods:{energy_end:+1, extra_trigger_patterns:{yellow:+1}}},
+  {id:'number-2', name:'Number 2', tickets:3, rarity:'Epic', tags:['red-button','patterns','energy'], effect:'Red‑Button: Nicht‑gelbe Symbol‑Patterns lösen 1× zusätzlich aus. +1 Energy am Deadline‑Ende.', mods:{energy_end:+1, extra_trigger_patterns:{non_yellow:+1}}},
+  {id:'pentacle', name:'Pentacle', tickets:3, rarity:'Rare', tags:['multiplier','patterns'], effect:'Symbol‑Multiplikator +1; +1 extra, wenn ≥5 Patterns im Spin auslösen.', mods:{multiplier_symbol_base:+1, bonus_mult_if_5patterns:+1}},
+  {id:'raging-capitalist', name:'Raging Capitalist', tickets:4, rarity:'Epic', tags:['tickets'], effect:'+2% Chance auf Ticket‑Mod pro Symbol; +1% je Charm‑Kauf (max 25%).', mods:{ticket_mod_symbol_chance_pct:+2, ticket_mod_per_purchase_pct:+1, ticket_mod_cap_pct:25}},
+  {id:'red-pepper', name:'Red Pepper', tickets:1, rarity:'Common', tags:['random','luck','charges'], effect:'20% zufällig: Luck +5 für aktuellen Spin. Entfernt sich nach 12 Auslösungen.', mods:{luck_on_trigger:+5, trigger_chance_pct:20, charges:12}},
+  {id:'red-shiny-rock', name:'Red Shiny Rock', tickets:1, rarity:'Common', tags:['red-button','luck','energy'], effect:'Red‑Button (3/3 Energy): Luck +4 für den nächsten Spin. +1 Energy am Rundenende.', mods:{luck_next_spin:+4, energy_end:+1}},
+  {id:'seven-picture', name:'Seven Picture', tickets:3, rarity:'Uncommon', tags:['red-button','energy','symbols-bias'], effect:'Red‑Button: Mehr Sieben (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.', mods:{energy_end:+1, red_button_bias:{seven:+2}}},
+  {id:'shrooms', name:'Shrooms', tickets:2, rarity:'Rare', tags:['patterns','multiplier'], effect:'Bei ≥3 Patterns im Spin: Alle Symbolwerte bis Rundenende verdoppelt.', mods:{double_symbol_values_on_3patterns:true}},
+  {id:'stain', name:'Stain', tickets:1, rarity:'Uncommon', tags:['patterns'], effect:'Bei ≥3 Patterns im Spin: Alle Pattern‑Werte um ihren Basiswert erhöhen (bis Rundenende).', mods:{add_base_to_patterns_on_3patterns:true}},
+  {id:'stonks', name:'Stonks', tickets:2, rarity:'Uncommon', tags:['interest'], effect:'Zinsen +5%.', mods:{interest_pct:+5}},
+  {id:'tarot-deck', name:'Tarot Deck', tickets:1, rarity:'Uncommon', tags:['multiplier','random'], effect:'Start Multiplikator 0; +1 wenn ein Charm im Spin triggert; Reset auf 0, falls nichts triggert.', mods:{combo_multiplier:true}},
+  {id:'toy-train', name:'Toy Train', tickets:2, rarity:'Uncommon', tags:['luck'], effect:'Wenn die letzten 2 Spins keinen Reward gaben: +5 Luck für den nächsten Spin.', mods:{luck_if_two_dead_spins:+5}}
+];
+
+// --- Persistenz ----------------------------------------------------------
+const store = {
+  load(){
+    try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}};
+  },
+  save(data){ localStorage.setItem('cpit', JSON.stringify(data)); }
+};
+
+const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false} }, store.load());
+
+// --- UI Binding ----------------------------------------------------------
+const $ = sel => document.querySelector(sel);
+const listEl = $('#list');
+const statsEl = $('#stats');
+
+$('#coins').value = state.coins; $('#tickets').value = state.tickets;
+$('#coins').addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); });
+$('#tickets').addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); });
+
+$('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#tag').value = state.filters.tag; $('#ownedOnly').checked = state.filters.ownedOnly;
+$('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
+$('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
+$('#tag').addEventListener('change', e=>{ state.filters.tag = e.target.value; render(); sync(); });
+$('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
+
+$('#resetBtn').addEventListener('click', ()=>{
+  if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); }
+});
+
+$('#exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+$('#importBtn').addEventListener('click', ()=> $('#fileInput').click());
+$('#fileInput').addEventListener('change', e=>{
+  const file = e.target.files?.[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      Object.assign(state, data);
+      $('#coins').value = state.coins; $('#tickets').value = state.tickets;
+      render(); sync();
+    }catch{ alert('Ungültige JSON-Datei.'); }
+  };
+  reader.readAsText(file);
+});
+
+// bottom dock actions
+$('#scrollTop').addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+$('#toggleOwned').addEventListener('click', ()=>{ const el=$('#ownedOnly'); el.checked=!el.checked; el.dispatchEvent(new Event('change')); });
+$('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); });
+
+function sync(){ store.save(state); updateStats(); renderEffects(); }
+
+function updateStats(){
+  const ownedCount = Object.values(state.owned).filter(Boolean).length;
+  statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`;
+}
+
+function render(){
+  const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
+  const items = CHARMS.filter(c=>{
+    if(rar && c.rarity!==rar) return false;
+    if(tag && !(c.tags||[]).includes(tag)) return false;
+    if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; }
+    if(ownedOnly && !state.owned[c.id]) return false;
+    return true;
+  }).sort((a,b)=> a.name.localeCompare(b.name));
+
+  listEl.innerHTML = '';
+  for(const c of items){
+    const card = document.createElement('div'); card.className = 'card tap';
+    const left = document.createElement('div');
+    const nm = document.createElement('div'); nm.className='name'; nm.textContent = c.name;
+    const fx = document.createElement('div'); fx.className='effect'; fx.textContent = c.effect;
+    const meta = document.createElement('div'); meta.className='rar';
+    const baseSym = c.mods?.symbol_base ? ` · Symbol‑Basis: ${JSON.stringify(c.mods.symbol_base)}` : '';
+    const baseRow = c.mods?.row_base ? ` · Reihen‑Basis: ${c.mods.row_base>0?'+':''}${c.mods.row_base}` : '';
+    meta.innerHTML = `🎟️ ${c.tickets} · Seltenheit: ${c.rarity} · ${c.tags.map(t=>`<span class="pill">${t}</span>`).join(' ')}${baseSym}${baseRow}`;
+    left.appendChild(nm); left.appendChild(fx); left.appendChild(meta);
+
+    const right = document.createElement('label'); right.className='row'; right.title='Im Besitz?';
+    const chk = document.createElement('input'); chk.type='checkbox'; chk.className='own'; chk.checked = !!state.owned[c.id];
+    chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); });
+    const txt = document.createElement('span'); txt.textContent='Besitz'; txt.className='muted small';
+    right.appendChild(chk); right.appendChild(txt);
+
+    // tap on card toggles checkbox (bigger touch target)
+    card.addEventListener('click', (ev)=>{
+      if(ev.target.tagName !== 'INPUT'){
+        chk.checked = !chk.checked;
+        chk.dispatchEvent(new Event('change'));
+      }
+    });
+
+    card.appendChild(left); card.appendChild(right);
+    listEl.appendChild(card);
+  }
+  updateStats();
+  renderEffects();
+}
+
+render();
+
+// --- Effekte aggregieren -------------------------------------------------
+function computeEffects(){
+  const eff = {
+    energy_end:0, spins:0, interest_pct:0, luck_flat:0, tickets_instant:0,
+    ticket_mod_symbol_chance_pct:0, ticket_mod_cap_pct:0, multiplier_symbol_base:0,
+    row_base:0, symbol_base:{}, notes:[]
+  };
+  for(const c of CHARMS){
+    if(!state.owned[c.id]) continue;
+    const m = c.mods||{};
+    if(m.energy_end) eff.energy_end += m.energy_end;
+    if(m.spins) eff.spins += m.spins;
+    if(m.interest_pct) eff.interest_pct += m.interest_pct;
+    if(m.multiplier_symbol_base) eff.multiplier_symbol_base += m.multiplier_symbol_base;
+    if(m.row_base) eff.row_base += m.row_base;
+    if(m.symbol_base){
+      for(const [sym,val] of Object.entries(m.symbol_base)){
+        eff.symbol_base[sym] = (eff.symbol_base[sym]||0)+val;
+      }
+    }
+    if(m.tickets_instant) eff.tickets_instant += m.tickets_instant;
+    if(m.ticket_mod_symbol_chance_pct) eff.ticket_mod_symbol_chance_pct += m.ticket_mod_symbol_chance_pct;
+    if(m.ticket_mod_cap_pct && m.ticket_mod_cap_pct>eff.ticket_mod_cap_pct) eff.ticket_mod_cap_pct = m.ticket_mod_cap_pct;
+    if(m.luck_on_trigger) eff.notes.push(`Luck +${m.luck_on_trigger} (zufällig)`);
+    if(m.luck_next_spin) eff.notes.push(`Luck +${m.luck_next_spin} (nächster Spin)`);
+    if(m.luck_last_spin) eff.notes.push(`Luck +${m.luck_last_spin} (letzter Spin)`);
+    if(m.energy_restore) eff.notes.push('Energy‑Aufladungen werden wiederhergestellt');
+    if(m.double_red_button) eff.notes.push('Red‑Button‑Fähigkeiten doppelt');
+    if(m.extra_trigger_red_button) eff.notes.push(`Red‑Button zusätzlich: +${m.extra_trigger_red_button}× Auslösung`);
+    if(m.golden_bias) eff.notes.push('Golden‑Mod: Symbol‑Bias aktiv');
+    if(m.red_button_bias) eff.notes.push('Red‑Button: Symbol‑Bias aktiv');
+    if(m.coins_from_debt_pct) eff.notes.push(`Sofort Coins: ${m.coins_from_debt_pct}% der Schuld`);
+    if(m.combo_multiplier) eff.notes.push('Combo‑Multiplikator aktiv');
+    if(m.tickets_interest) eff.notes.push('Ticket‑Zinsen: +1 je 3 (max 10) am Deadline‑Ende');
+    if(m.interest_decay_pct) eff.notes.push(`Zinsen verfallen: −${m.interest_decay_pct}% pro Runde`);
+  }
+  return eff;
+}
+
+function renderEffects(){
+  const eff = computeEffects();
+  const sumEl = document.getElementById('effectsSummary');
+  const detEl = document.getElementById('effectsDetails');
+  if(!sumEl||!detEl) return;
+
+  const parts = [];
+  if(eff.spins) parts.push(`Spins +${eff.spins}`);
+  if(eff.energy_end) parts.push(`Energy/Deadline +${eff.energy_end}`);
+  if(eff.interest_pct) parts.push(`Zinsen +${eff.interest_pct}%`);
+  if(eff.multiplier_symbol_base) parts.push(`Symbol‑Multiplikator +${eff.multiplier_symbol_base}`);
+  if(Object.keys(eff.symbol_base).length) parts.push(`Symbol‑Basiswerte aktiv`);
+  if(eff.row_base) parts.push(`Reihen‑Basis ${eff.row_base>0?'+':''}${eff.row_base}`);
+  if(eff.tickets_instant) parts.push(`Tickets sofort +${eff.tickets_instant}`);
+  if(eff.ticket_mod_symbol_chance_pct) parts.push(`Ticket‑Mod‑Chance +${eff.ticket_mod_symbol_chance_pct}% (Cap ${eff.ticket_mod_cap_pct||'—'}%)`);
+  sumEl.textContent = parts.length? parts.join(' · ') : 'Keine dauerhaften Basiseffekte';
+
+  detEl.innerHTML = '';
+  // Detail: Symbol-/Reihen-Basiswerte
+  if(Object.keys(eff.symbol_base).length || eff.row_base){
+    const card = document.createElement('div'); card.className='card';
+    const left = document.createElement('div');
+    const nm = document.createElement('div'); nm.className='name'; nm.textContent='Basiswerte';
+    const fx = document.createElement('div'); fx.className='effect';
+    const symParts = Object.entries(eff.symbol_base).map(([k,v])=>`${k}: ${v>0?'+':''}${v}`);
+    const rows = [];
+    if(symParts.length) rows.push(`Symbole → ${symParts.join(', ')}`);
+    if(eff.row_base) rows.push(`Reihen → ${eff.row_base>0?'+':''}${eff.row_base}`);
+    fx.textContent = rows.join(' | ');
+    left.appendChild(nm); left.appendChild(fx);
+    card.appendChild(left);
+    detEl.appendChild(card);
+  }
+
+  // Detail: Hinweise / konditionale Effekte
+  if(eff.notes.length){
+    const card = document.createElement('div'); card.className='card';
+    const left = document.createElement('div');
+    const nm = document.createElement('div'); nm.className='name'; nm.textContent='Konditionale Effekte';
+    const fx = document.createElement('div'); fx.className='effect'; fx.textContent = eff.notes.join(' · ');
+    left.appendChild(nm); left.appendChild(fx);
+    card.appendChild(left);
+    detEl.appendChild(card);
+  }
+}
+
+renderEffects();
+</script>
+</body>
+</html>
