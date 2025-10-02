@@ -1,4 +1,4 @@
-const VERSION = '2025-10-02-01';
+const VERSION = '2025-10-02-02';
 const CACHE = `cloverpit-${VERSION}`;
 const ASSETS = [
   './',
@@ -32,8 +32,8 @@ self.addEventListener('fetch', (event) => {
   const scope = self.registration.scope.replace(/\/$/, '');
   const path = url.pathname.startsWith(scope) ? '.' + url.pathname.slice(scope.length) : url.pathname;
 
-  const isHtml = path === './' or path.endswith('/index.html');
-  const isVersion = path.endswith('/version.json');
+  const isHtml = path === './' || path.endsWith('/index.html');
+  const isVersion = path.endsWith('/version.json');
 
   if (isHtml || isVersion) {
     event.respondWith(

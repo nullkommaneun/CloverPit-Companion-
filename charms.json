@@ -1,13 +1,615 @@
 [
   {
-    "id": "sample",
-    "name": "Sample Charm",
+    "id": "bell-picture",
+    "name": "Bell Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Glocken (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "bell": 2
+      }
+    }
+  },
+  {
+    "id": "car-battery",
+    "name": "Car Battery",
+    "tickets": 1,
+    "rarity": "Rare",
+    "tags": [
+      "energy"
+    ],
+    "effect": "Belegt keinen Platz. Stellt alle Energy‑Ladungen auf Red‑Button‑Charms wieder her.",
+    "mods": {
+      "energy_restore": true
+    }
+  },
+  {
+    "id": "cat-food",
+    "name": "Cat Food",
+    "tickets": 4,
+    "rarity": "Rare",
+    "tags": [
+      "spins"
+    ],
+    "effect": "+2 Spins pro Runde.",
+    "mods": {
+      "spins": 2
+    }
+  },
+  {
+    "id": "cherry-picture",
+    "name": "Cherry Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Kirschen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "cherry": 2
+      }
+    }
+  },
+  {
+    "id": "clover-picture",
+    "name": "Clover Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Kleeblätter (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "clover": 2
+      }
+    }
+  },
+  {
+    "id": "clover-voucher",
+    "name": "Clover Voucher",
+    "tickets": 2,
+    "rarity": "Epic",
+    "tags": [
+      "tickets"
+    ],
+    "effect": "Belegt keinen Platz. Gewährt sofort 4 Tickets.",
+    "mods": {
+      "tickets_instant": 4
+    }
+  },
+  {
+    "id": "cloverpet",
+    "name": "Cloverpet",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": [
+      "multiplier",
+      "tickets"
+    ],
+    "effect": "Symbol‑Multiplikator +1 je 5 Tickets im Besitz.",
+    "mods": {
+      "mult_sym_per_5tickets": 1
+    }
+  },
+  {
+    "id": "cloverpot",
+    "name": "Cloverpot",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": [
+      "tickets",
+      "interest"
+    ],
+    "effect": "Am Ende jeder Deadline: +1 Ticket je 3 vorhandene (max 10).",
+    "mods": {
+      "tickets_interest": true
+    }
+  },
+  {
+    "id": "coins-picture",
+    "name": "Coins Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Münzen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "coin": 2
+      }
+    }
+  },
+  {
+    "id": "diamond-picture",
+    "name": "Diamond Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Diamanten (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "diamond": 2
+      }
+    }
+  },
+  {
+    "id": "fake-coin",
+    "name": "Fake Coin",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": [
+      "random",
+      "spins",
+      "luck"
+    ],
+    "effect": "10% zufällig: +1 Extra‑Spin, danach Luck +4 für diesen Spin.",
+    "mods": {
+      "chance_extra_spin": 10,
+      "luck_on_trigger": 4
+    }
+  },
+  {
+    "id": "golden-bell",
+    "name": "Golden Bell",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Glocken erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "bell": 20
+      }
+    }
+  },
+  {
+    "id": "golden-cherry",
+    "name": "Golden Cherry",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Kirschen erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "cherry": 20
+      }
+    }
+  },
+  {
+    "id": "golden-clover",
+    "name": "Golden Clover",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Kleeblätter erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "clover": 20
+      }
+    }
+  },
+  {
+    "id": "golden-coins",
+    "name": "Golden Coins",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Münzen erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "coin": 20
+      }
+    }
+  },
+  {
+    "id": "golden-diamonds",
+    "name": "Golden Diamonds",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Diamanten erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "diamond": 20
+      }
+    }
+  },
+  {
+    "id": "golden-lemon",
+    "name": "Golden Lemon",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Zitronen erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "lemon": 20
+      }
+    }
+  },
+  {
+    "id": "golden-seven",
+    "name": "Golden Seven",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "golden-mod",
+      "symbols-bias"
+    ],
+    "effect": "Sieben erscheinen +20% häufiger mit Golden‑Mod.",
+    "mods": {
+      "golden_bias": {
+        "seven": 20
+      }
+    }
+  },
+  {
+    "id": "grandmas-purse",
+    "name": "Grandma's Purse",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": [
+      "interest"
+    ],
+    "effect": "Zinsen +15%, sinken nach jeder Runde um 3%. Entfernt sich bei 0.",
+    "mods": {
+      "interest_pct": 15,
+      "interest_decay_pct": 3
+    }
+  },
+  {
+    "id": "green-pepper",
+    "name": "Green Pepper",
+    "tickets": 2,
+    "rarity": "Common",
+    "tags": [
+      "random",
+      "luck",
+      "charges"
+    ],
+    "effect": "15% zufällig: Luck +7 für aktuellen Spin. Entfernt sich nach 9 Auslösungen.",
+    "mods": {
+      "luck_on_trigger": 7,
+      "trigger_chance_pct": 15,
+      "charges": 9
+    }
+  },
+  {
+    "id": "hamsa",
+    "name": "Hamsa",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "luck"
+    ],
+    "effect": "Luck +7 beim letzten Spin einer Runde.",
+    "mods": {
+      "luck_last_spin": 7
+    }
+  },
+  {
+    "id": "holy-bible",
+    "name": "Holy Bible",
     "tickets": 1,
     "rarity": "Common",
     "tags": [
-      "demo"
+      "safety"
     ],
-    "effect": "Demo.",
-    "mods": {}
+    "effect": "Wenn 666 auslösen würde: in normale Symbole wandeln und Charm entfernen.",
+    "mods": {
+      "anti_666": true
+    }
+  },
+  {
+    "id": "horseshoe",
+    "name": "Horseshoe",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "random"
+    ],
+    "effect": "\"Triggers Randomly\"‑Effekte treten doppelt so oft auf.",
+    "mods": {
+      "double_random_triggers": true
+    }
+  },
+  {
+    "id": "lemon-picture",
+    "name": "Lemon Picture",
+    "tickets": 4,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Zitronen (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "lemon": 2
+      }
+    }
+  },
+  {
+    "id": "lost-briefcase",
+    "name": "Lost Briefcase",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": [
+      "coins"
+    ],
+    "effect": "Belegt keinen Platz. Sofort +30% der aktuellen Schuld als Geld.",
+    "mods": {
+      "coins_from_debt_pct": 30
+    }
+  },
+  {
+    "id": "lucky-cat",
+    "name": "Lucky Cat",
+    "tickets": 1,
+    "rarity": "Rare",
+    "tags": [
+      "interest",
+      "patterns"
+    ],
+    "effect": "Bei ≥3 Patterns im Spin: Geld in Höhe der aktuellen Zinsen.",
+    "mods": {
+      "payout_equal_interest_on_3patterns": true
+    }
+  },
+  {
+    "id": "megaphone",
+    "name": "Megaphone",
+    "tickets": 7,
+    "rarity": "Legendary",
+    "tags": [
+      "red-button",
+      "energy"
+    ],
+    "effect": "Alle roten Telefon‑Fähigkeiten doppelt. Charm‑Slots −1.",
+    "mods": {
+      "double_red_button": true,
+      "slots_delta": -1
+    }
+  },
+  {
+    "id": "nuclear-button",
+    "name": "Nuclear Button",
+    "tickets": 3,
+    "rarity": "Legendary",
+    "tags": [
+      "red-button"
+    ],
+    "effect": "Alle Red‑Button‑Charms lösen einmal zusätzlich aus. Charm‑Slots −1.",
+    "mods": {
+      "extra_trigger_red_button": 1,
+      "slots_delta": -1
+    }
+  },
+  {
+    "id": "number-1",
+    "name": "Number 1",
+    "tickets": 3,
+    "rarity": "Epic",
+    "tags": [
+      "red-button",
+      "patterns",
+      "energy"
+    ],
+    "effect": "Red‑Button: Gelbe Symbol‑Patterns lösen 1× zusätzlich aus. +1 Energy am Deadline‑Ende.",
+    "mods": {
+      "energy_end": 1,
+      "extra_trigger_patterns": {
+        "yellow": 1
+      }
+    }
+  },
+  {
+    "id": "number-2",
+    "name": "Number 2",
+    "tickets": 3,
+    "rarity": "Epic",
+    "tags": [
+      "red-button",
+      "patterns",
+      "energy"
+    ],
+    "effect": "Red‑Button: Nicht‑gelbe Symbol‑Patterns lösen 1× zusätzlich aus. +1 Energy am Deadline‑Ende.",
+    "mods": {
+      "energy_end": 1,
+      "extra_trigger_patterns": {
+        "non_yellow": 1
+      }
+    }
+  },
+  {
+    "id": "pentacle",
+    "name": "Pentacle",
+    "tickets": 3,
+    "rarity": "Rare",
+    "tags": [
+      "multiplier",
+      "patterns"
+    ],
+    "effect": "Symbol‑Multiplikator +1; +1 extra, wenn ≥5 Patterns im Spin auslösen.",
+    "mods": {
+      "multiplier_symbol_base": 1,
+      "bonus_mult_if_5patterns": 1
+    }
+  },
+  {
+    "id": "raging-capitalist",
+    "name": "Raging Capitalist",
+    "tickets": 4,
+    "rarity": "Epic",
+    "tags": [
+      "tickets"
+    ],
+    "effect": "+2% Chance auf Ticket‑Mod pro Symbol; +1% je Charm‑Kauf (max 25%).",
+    "mods": {
+      "ticket_mod_symbol_chance_pct": 2,
+      "ticket_mod_per_purchase_pct": 1,
+      "ticket_mod_cap_pct": 25
+    }
+  },
+  {
+    "id": "red-pepper",
+    "name": "Red Pepper",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": [
+      "random",
+      "luck",
+      "charges"
+    ],
+    "effect": "20% zufällig: Luck +5 für aktuellen Spin. Entfernt sich nach 12 Auslösungen.",
+    "mods": {
+      "luck_on_trigger": 5,
+      "trigger_chance_pct": 20,
+      "charges": 12
+    }
+  },
+  {
+    "id": "red-shiny-rock",
+    "name": "Red Shiny Rock",
+    "tickets": 1,
+    "rarity": "Common",
+    "tags": [
+      "red-button",
+      "luck",
+      "energy"
+    ],
+    "effect": "Red‑Button (3/3 Energy): Luck +4 für den nächsten Spin. +1 Energy am Rundenende.",
+    "mods": {
+      "luck_next_spin": 4,
+      "energy_end": 1
+    }
+  },
+  {
+    "id": "seven-picture",
+    "name": "Seven Picture",
+    "tickets": 3,
+    "rarity": "Uncommon",
+    "tags": [
+      "red-button",
+      "energy",
+      "symbols-bias"
+    ],
+    "effect": "Red‑Button: Mehr Sieben (+2) in dieser Runde. Am Deadline‑Ende +1 Energy.",
+    "mods": {
+      "energy_end": 1,
+      "red_button_bias": {
+        "seven": 2
+      }
+    }
+  },
+  {
+    "id": "shrooms",
+    "name": "Shrooms",
+    "tickets": 2,
+    "rarity": "Rare",
+    "tags": [
+      "patterns",
+      "multiplier"
+    ],
+    "effect": "Bei ≥3 Patterns im Spin: Alle Symbolwerte bis Rundenende verdoppelt.",
+    "mods": {
+      "double_symbol_values_on_3patterns": true
+    }
+  },
+  {
+    "id": "stain",
+    "name": "Stain",
+    "tickets": 1,
+    "rarity": "Uncommon",
+    "tags": [
+      "patterns"
+    ],
+    "effect": "Bei ≥3 Patterns im Spin: Alle Pattern‑Werte um ihren Basiswert erhöhen (bis Rundenende).",
+    "mods": {
+      "add_base_to_patterns_on_3patterns": true
+    }
+  },
+  {
+    "id": "stonks",
+    "name": "Stonks",
+    "tickets": 2,
+    "rarity": "Uncommon",
+    "tags": [
+      "interest"
+    ],
+    "effect": "Zinsen +5%.",
+    "mods": {
+      "interest_pct": 5
+    }
+  },
+  {
+    "id": "tarot-deck",
+    "name": "Tarot Deck",
+    "tickets": 1,
+    "rarity": "Uncommon",
+    "tags": [
+      "multiplier",
+      "random"
+    ],
+    "effect": "Start Multiplikator 0; +1 wenn ein Charm im Spin triggert; Reset auf 0, falls nichts triggert.",
+    "mods": {
+      "combo_multiplier": true
+    }
+  },
+  {
+    "id": "toy-train",
+    "name": "Toy Train",
+    "tickets": 2,
+    "rarity": "Uncommon",
+    "tags": [
+      "luck"
+    ],
+    "effect": "Wenn die letzten 2 Spins keinen Reward gaben: +5 Luck für den nächsten Spin.",
+    "mods": {
+      "luck_if_two_dead_spins": 5
+    }
   }
 ]

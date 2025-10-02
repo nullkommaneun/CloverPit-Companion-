@@ -23,7 +23,7 @@
         <button class="btn ghost" id="exportBtn">Export</button>
         <button class="btn" id="importBtn">Import</button>
         <input type="file" id="fileInput" accept="application/json" hidden>
-        <button class="btn primary" id="resetBtn">Reset</button>
+        <button class="btn primary" id="resetBtn" title="Alles zurücksetzen">Reset</button>
         <button class="btn install" id="installBtn" hidden>Installieren</button>
       </div>
     </div>
@@ -45,6 +45,10 @@
           <button class="chip" data-chip="red-button">Red‑Button</button>
           <button class="chip" data-chip="golden-mod">Golden‑Mod</button>
           <button class="chip" data-chip="tickets">Tickets</button>
+          <button class="chip" data-chip="energy">Energy</button>
+          <button class="chip" data-chip="interest">Interest</button>
+          <button class="chip" data-chip="random">Random</button>
+          <button class="chip" data-chip="patterns">Patterns</button>
         </div>
         <select id="rarity" aria-label="Seltenheit">
           <option value="">Seltenheit – alle</option>
@@ -96,135 +100,149 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-// PWA install prompt
-let deferredPrompt; const installBtn = document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.hidden = false; });
-installBtn.addEventListener('click', async ()=>{ installBtn.disabled = true; if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; } installBtn.hidden = true; });
+(async () => {
+  try {
+    // Install prompt
+    let deferredPrompt; const installBtn = document.getElementById('installBtn');
+    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.hidden = false; });
+    installBtn?.addEventListener('click', async ()=>{ installBtn.disabled = true; if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; } installBtn.hidden = true; });
 
-// SW register + auto update + version badge
-async function registerSW(){
-  if(!('serviceWorker' in navigator)) return;
-  const reg = await navigator.serviceWorker.register('./service-worker.js');
-  navigator.serviceWorker.addEventListener('controllerchange', ()=>window.location.reload());
-  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') reg.update(); });
-  setInterval(()=>reg.update(), 30*60*1000);
-  await checkVersion(true);
-  setTimeout(()=>checkVersion(false), 8000);
-}
-async function checkVersion(onLoad){
-  try{
-    const r = await fetch('./version.json', {cache:'no-store'});
-    const {version} = await r.json();
-    const last = localStorage.getItem('app_version');
-    showVersion(version, onLoad);
-    if(last && last !== version){
-      if(navigator.serviceWorker.controller){
-        navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
-      }
+    // SW + version badge
+    async function registerSW(){
+      if(!('serviceWorker' in navigator)) return;
+      const reg = await navigator.serviceWorker.register('./service-worker.js');
+      navigator.serviceWorker.addEventListener('controllerchange', ()=>window.location.reload());
+      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') reg.update(); });
+      setInterval(()=>reg.update(), 30*60*1000);
+      await checkVersion(true);
+      setTimeout(()=>checkVersion(false), 8000);
     }
-    localStorage.setItem('app_version', version);
-  }catch(e){}
-}
-function showVersion(v, onLoad){
-  const el = document.getElementById('versionBadge');
-  el.textContent = 'v ' + v;
-  el.hidden = false;
-  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
-  setTimeout(()=> el.classList.remove('show'), onLoad ? 2500 : 1200);
-}
-await registerSW();
+    async function checkVersion(onLoad){
+      try{
+        const r = await fetch('./version.json', {cache:'no-store'});
+        const {version} = await r.json();
+        const last = localStorage.getItem('app_version');
+        showVersion(version, onLoad);
+        if(last && last !== version && navigator.serviceWorker.controller){
+          navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+        }
+        localStorage.setItem('app_version', version);
+      }catch{}
+    }
+    function showVersion(v, onLoad){
+      const el = document.getElementById('versionBadge');
+      if (!el) return;
+      el.textContent = 'v ' + v;
+      el.hidden = false;
+      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      setTimeout(()=> el.classList.remove('show'), onLoad ? 2500 : 1200);
+    }
+    await registerSW();
 
-// Progress
-const topProgress = document.getElementById('topProgress');
-function setProgress(p){ topProgress.style.setProperty('--p', p + '%'); }
-setProgress(20);
+    // Progress
+    const topProgress = document.getElementById('topProgress');
+    const setProgress = (p)=> topProgress?.style.setProperty('--p', p + '%');
+    setProgress(20);
 
-// Load dataset
-const res = await fetch('charms.json'); setProgress(60);
-const CHARMS = await res.json(); setProgress(100); setTimeout(()=> topProgress.classList.add('done'), 350);
+    // Load charms
+    let CHARMS = [];
+    try {
+      const res = await fetch('charms.json'); setProgress(60);
+      CHARMS = await res.json(); setProgress(100);
+    } catch (e) { console.error('charms.json Fehler', e); }
+    setTimeout(()=> topProgress?.classList.add('done'), 350);
 
-// Persistence
-const store = { load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; }, save(d){ localStorage.setItem('cpit', JSON.stringify(d)); } };
-const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false}, ui:{listOpen:true} }, store.load());
+    // State
+    const store = { load(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch{return {}}; }, save(d){ localStorage.setItem('cpit', JSON.stringify(d)); } };
+    const state = Object.assign({ coins:0, tickets:0, owned:{}, filters:{q:'',rarity:'',tag:'',ownedOnly:false}, ui:{listOpen:true} }, store.load());
 
-// UI refs
-const $ = s=>document.querySelector(s);
-const listEl = $('#charmList'); const statsEl = $('#stats'); const toastEl = $('#toast');
-const listSection = $('#listSection'); const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
+    const $ = s=>document.querySelector(s);
+    const listEl = $('#charmList'); const statsEl = $('#stats'); const toastEl = $('#toast');
+    const listSection = $('#listSection'); const summaryFiltered = $('#summaryFiltered'); const summaryOwned = $('#summaryOwned');
 
-$('#coins').value = state.coins; $('#tickets').value = state.tickets;
-$('#coins').addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); });
-$('#tickets').addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); });
+    // Inputs
+    const coinsEl = document.getElementById('coins'); const ticketsEl = document.getElementById('tickets');
+    coinsEl && (coinsEl.value = state.coins, coinsEl.addEventListener('input', e=>{ state.coins = +e.target.value||0; sync(); }));
+    ticketsEl && (ticketsEl.value = state.tickets, ticketsEl.addEventListener('input', e=>{ state.tickets = +e.target.value||0; sync(); }));
 
-$('#search').value = state.filters.q; $('#rarity').value = state.filters.rarity; $('#ownedOnly').checked = state.filters.ownedOnly;
-document.getElementById('chips').addEventListener('click', e=>{ const chip = e.target.closest('[data-chip]'); if(!chip) return; const tag = chip.getAttribute('data-chip'); const isActive = chip.classList.toggle('active'); state.filters.tag = isActive ? tag : ''; render(); sync(); });
-$('#search').addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); });
-$('#rarity').addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); });
-$('#ownedOnly').addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); });
+    const searchEl = document.getElementById('search'); const rarityEl = document.getElementById('rarity'); const ownedOnlyEl = document.getElementById('ownedOnly');
+    searchEl && (searchEl.value = state.filters.q, searchEl.addEventListener('input', e=>{ state.filters.q = e.target.value.trim().toLowerCase(); render(); sync(); }));
+    rarityEl && (rarityEl.value = state.filters.rarity, rarityEl.addEventListener('change', e=>{ state.filters.rarity = e.target.value; render(); sync(); }));
+    ownedOnlyEl && (ownedOnlyEl.checked = state.filters.ownedOnly, ownedOnlyEl.addEventListener('change', e=>{ state.filters.ownedOnly = e.target.checked; render(); sync(); }));
 
-listSection.open = !!state.ui.listOpen;
-listSection.addEventListener('toggle', ()=>{ state.ui.listOpen = listSection.open; sync(); });
+    document.getElementById('chips')?.addEventListener('click', e=>{ const chip = e.target.closest('[data-chip]'); if(!chip) return; const tag = chip.getAttribute('data-chip'); const isActive = chip.classList.toggle('active'); state.filters.tag = isActive ? tag : ''; render(); sync(); });
 
-$('#resetBtn').addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
-$('#exportBtn').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); });
-$('#importBtn').addEventListener('click', ()=> $('#fileInput').click());
-$('#fileInput').addEventListener('change', e=>{ const file = e.target.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const data = JSON.parse(reader.result); Object.assign(state, data); $('#coins').value = state.coins; $('#tickets').value = state.tickets; render(); sync(); showToast('Import erfolgreich'); }catch{ showToast('Ungültige JSON-Datei'); } }; reader.readAsText(file); });
+    listSection && (listSection.open = !!state.ui.listOpen, listSection.addEventListener('toggle', ()=>{ state.ui.listOpen = listSection.open; sync(); }));
 
-$('#toggleOwned').addEventListener('click', ()=>{ const el=$('#ownedOnly'); el.checked=!el.checked; el.dispatchEvent(new Event('change')); });
-$('#clearSearch').addEventListener('click', ()=>{ $('#search').value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); });
-$('#scrollTop').addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+    document.getElementById('resetBtn')?.addEventListener('click', ()=>{ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); } });
+    document.getElementById('exportBtn')?.addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {href:url, download:'cloverpit-companion.json'}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); });
+    document.getElementById('importBtn')?.addEventListener('click', ()=> document.getElementById('fileInput')?.click());
+    document.getElementById('fileInput')?.addEventListener('change', e=>{ const file = e.target.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const data = JSON.parse(reader.result); Object.assign(state, data); coinsEl&&(coinsEl.value = state.coins); ticketsEl&&(ticketsEl.value = state.tickets); render(); sync(); showToast('Import erfolgreich'); }catch{ showToast('Ungültige JSON-Datei'); } }; reader.readAsText(file); });
 
-document.getElementById('bulkSelect').addEventListener('click', ()=> bulkSet(true));
-document.getElementById('bulkClear').addEventListener('click', ()=> bulkSet(false));
-function bulkSet(val){ const filtered = currentFiltered(); for(const c of filtered){ state.owned[c.id] = val; } sync(); render(); showToast(val ? 'Alle markiert' : 'Alle entfernt'); vibe(8); }
+    document.getElementById('toggleOwned')?.addEventListener('click', ()=>{ if(!ownedOnlyEl) return; ownedOnlyEl.checked=!ownedOnlyEl.checked; ownedOnlyEl.dispatchEvent(new Event('change')); });
+    document.getElementById('clearSearch')?.addEventListener('click', ()=>{ if(!searchEl) return; searchEl.value=''; state.filters.q=''; render(); sync(); showToast('Suche gelöscht'); });
+    document.getElementById('scrollTop')?.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
 
-function sync(){ store.save(state); updateStats(); renderEffects(); }
+    function sync(){ store.save(state); updateStats(); renderEffects(); }
+    function updateStats(){ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl && (statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`); summaryOwned && (summaryOwned.textContent = ownedCount + ' besessen'); }
+    function currentFiltered(){ const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly; return (CHARMS||[]).filter(c=>{ if(rar && c.rarity!==rar) return False; if(tag and !(c.tags||[]).includes(tag)) return False; if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return False; } if(ownedOnly and !state.owned[c.id]) return False; return True; }).sort((a,b)=> a.name.localeCompare(b.name)); }
 
-function updateStats(){ const ownedCount = Object.values(state.owned).filter(Boolean).length; statsEl.textContent = `${ownedCount}/${CHARMS.length} besessen · Tickets: ${state.tickets} · Münzen: ${state.coins}`; summaryOwned.textContent = ownedCount + ' besessen'; }
+    function highlight(text, query){ if(!query) return text; const idx = text.toLowerCase().indexOf(query.toLowerCase()); if(idx<0) return text; const before = text.slice(0, idx); const match = text.slice(idx, idx+query.length); const after = text.slice(idx+query.length); return `${before}<mark>${match}</mark>${after}`; }
 
-function currentFiltered(){ const q = state.filters.q; const rar = state.filters.rarity; const tag = state.filters.tag; const ownedOnly = state.filters.ownedOnly;
-  return CHARMS.filter(c=>{ if(rar && c.rarity!==rar) return false; if(tag && !(c.tags||[]).includes(tag)) return false; if(q){ const hay = (c.name+' '+c.effect).toLowerCase(); if(!hay.includes(q)) return false; } if(ownedOnly && !state.owned[c.id]) return false; return true; }).sort((a,b)=> a.name.localeCompare(b.name)); }
+    function render(){
+      if (!listEl) return;
+      const items = currentFiltered(); const q = state.filters.q; listEl.innerHTML = '';
+      for(const c of items){
+        const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
+        const label = document.createElement('label');
+        const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
+        chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`); if(navigator.vibrate) try{ navigator.vibrate(7); }catch{} });
+        const container = document.createElement('div');
+        const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
+        const eff = document.createElement('div'); eff.className='c-effect'; eff.innerHTML = highlight(c.effect, q);
+        const meta = document.createElement('div'); meta.className='c-meta';
+        const t = document.createElement('span'); t.className='pill'; t.textContent = `🎟️ ${c.tickets}`;
+        const r = document.createElement('span'); r.className='pill'; r.textContent = c.rarity;
+        meta.appendChild(t); meta.appendChild(r);
+        for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
+        container.appendChild(name); container.appendChild(eff); container.appendChild(meta);
+        label.appendChild(chk); label.appendChild(container);
+        li.appendChild(label);
+        listEl.appendChild(li);
+      }
+      summaryFiltered && (summaryFiltered.textContent = items.length + ' gefiltert');
+      updateStats(); renderEffects();
+    }
+    function renderEffects(){ const sumEl = document.getElementById('effectsSummary'); if(sumEl){ sumEl.textContent = '–'; sumEl.classList.remove('pop'); void sumEl.offsetWidth; sumEl.classList.add('pop'); } }
+    function showToast(msg){ const el = document.getElementById('toast'); if(!el) return; el.textContent = msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(()=> el.classList.remove('show'), 1600); }
+    function microPulse(el, on){ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on ? 'pulse-on' : 'pulse-off'); }
 
-function highlight(text, query){ if(!query) return text; const idx = text.toLowerCase().indexOf(query.toLowerCase()); if(idx<0) return text; const before = text.slice(0, idx); const match = text.slice(idx, idx+query.length); const after = text.slice(idx+query.length); return `${before}<mark>${match}</mark>${after}`; }
+    render(); renderEffects();
 
-function render(){
-  const items = currentFiltered(); const q = state.filters.q;
-  listEl.innerHTML = '';
-  for(const c of items){
-    const li = document.createElement('li'); li.className = 'charm-item'; li.dataset.id = c.id;
-    const label = document.createElement('label');
+    // Diagnostics
+    async function runDiagnostics() {
+      const issues = [];
+      try {
+        const r = await fetch('./version.json', { cache: 'no-store' });
+        const data = await r.json();
+        if (!data || !data.version) issues.push('Version.json leer/ungültig');
+      } catch { issues.push('Version.json nicht erreichbar'); }
 
-    const chk = document.createElement('input'); chk.type='checkbox'; chk.checked=!!state.owned[c.id];
-    chk.addEventListener('change', e=>{ state.owned[c.id] = e.target.checked; sync(); microPulse(li, e.target.checked); showToast(e.target.checked ? `Hinzugefügt: ${c.name}` : `Entfernt: ${c.name}`); vibe(7); });
+      if (!Array.isArray(CHARMS) || CHARMS.length === 0) issues.push('charms.json leer/nicht geladen');
 
-    const container = document.createElement('div');
-    const name = document.createElement('div'); name.className='c-name'; name.innerHTML = highlight(c.name, q);
-    const eff = document.createElement('div'); eff.className='c-effect'; eff.innerHTML = highlight(c.effect, q);
+      ['#charmList', '#exportBtn', '#resetBtn'].forEach(sel => { if (!document.querySelector(sel)) issues.push('UI fehlt: ' + sel); });
 
-    const meta = document.createElement('div'); meta.className='c-meta';
-    const t = document.createElement('span'); t.className='pill'; t.textContent = `🎟️ ${c.tickets}`;
-    const r = document.createElement('span'); r.className='pill'; r.textContent = c.rarity;
-    meta.appendChild(t); meta.appendChild(r);
-    for(const tag of (c.tags||[])){ const p=document.createElement('span'); p.className='pill'; p.textContent=tag; meta.appendChild(p); }
+      if (!navigator.serviceWorker.controller) issues.push('Kein aktiver Service Worker');
 
-    container.appendChild(name); container.appendChild(eff); container.appendChild(meta);
-    label.appendChild(chk); label.appendChild(container);
-    li.appendChild(label);
-    listEl.appendChild(li);
+      if (issues.length) { console.warn('Diagnosefehler:', issues); showToast('⚠️ Diagnose: ' + issues.join(' | ')); }
+    }
+    setTimeout(runDiagnostics, 1800);
+
+  } catch (fatal) {
+    console.error('Fataler Init-Fehler', fatal);
+    const el = document.getElementById('toast'); if (el) { el.textContent = '⚠️ Startfehler: ' + (fatal.message||fatal); el.classList.add('show'); }
   }
-  summaryFiltered.textContent = items.length + ' gefiltert';
-  updateStats(); renderEffects();
-}
-
-// effects (minimal placeholder to avoid long code)
-function computeEffects(){ return {notes:[]}; }
-function renderEffects(){ const sumEl = document.getElementById('effectsSummary'); if(sumEl){ sumEl.textContent = '–'; } }
-
-function showToast(msg){ toastEl.textContent = msg; toastEl.classList.remove('show'); void toastEl.offsetWidth; toastEl.classList.add('show'); setTimeout(()=> toastEl.classList.remove('show'), 1600); }
-function microPulse(el, on){ el.classList.remove('pulse-on','pulse-off'); void el.offsetWidth; el.classList.add(on ? 'pulse-on' : 'pulse-off'); }
-function vibe(ms){ if(navigator.vibrate) try{ navigator.vibrate(ms); }catch{} }
-
-render(); renderEffects();
+})();
 </script>
 </body>
 </html>
