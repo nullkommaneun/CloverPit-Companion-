@@ -1,5 +1,5 @@
-/* CloverPit SW single-file v 2025-10-02-15 */
-(function(){'use strict';var V='2025-10-02-15',C='cloverpit-'+V,A=['./','./index.html','./style.css?v='+V,'./manifest.webmanifest?v='+V,'./version.json?v='+V,'./icons/app-192.png','./icons/app-512.png','./charms.json?v='+V];
+/* CloverPit SW single-file v 2025-10-03-03 */
+(function(){'use strict';var V='2025-10-03-03',C='cloverpit-'+V,A=['./','./index.html','./style.css?v='+V,'./manifest.webmanifest?v='+V,'./version.json?v='+V,'./icons/app-192.png','./icons/app-512.png','./charms.json?v='+V];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(A);}));self.skipWaiting();});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(k){return Promise.all(k.map(function(x){if(x.indexOf('cloverpit-')===0&&x!==C)return caches.delete(x);return Promise.resolve();}));}));self.clients.claim();});
 self.addEventListener('fetch',function(e){

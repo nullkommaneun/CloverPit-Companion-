@@ -4,10 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>CloverPit Companion</title>
-  <link rel="manifest" href="manifest.webmanifest?v=2025-10-02-15">
-  <link rel="icon" href="icons/app-192.png" sizes="192x192">
+  <link rel="manifest" href="manifest.webmanifest?v=2025-10-03-03">
   <meta name="theme-color" content="#0d1117">
-  <link rel="stylesheet" href="style.css?v=2025-10-02-15">
+  <link rel="stylesheet" href="style.css?v=2025-10-03-03">
   <script>(function(){if(window.__cpit_boot)return;window.__cpit_boot={ok:false,errs:[]};function el(){var e=document.getElementById('cpit_err_badge');if(e)return e;e=document.createElement('div');e.id='cpit_err_badge';e.innerHTML='<div class="t">⚠️ Startproblem</div><div class="m"></div><button id="cpit_copy">Details kopieren</button>';document.documentElement.appendChild(e);return e}function msg(x){try{return typeof x==='string'?x:(x&&x.stack)||x.message||JSON.stringify(x)}catch(e){return'Startfehler'}}function show(m){var e=el();e.querySelector('.m').textContent=m;document.getElementById('cpit_copy').onclick=function(){navigator.clipboard.writeText(window.__cpit_boot.errs.join('\n'))}}function rep(k,err){var m='['+k+'] '+msg(err);window.__cpit_boot.errs.push(m);show(m);}window.addEventListener('error',function(e){rep('error',e.error||e.message||e)});window.addEventListener('unhandledrejection',function(e){rep('unhandledrejection',e.reason||e)});})();</script>
 </head>
 <body>
@@ -35,38 +34,13 @@
         <div><label for="tickets">Tickets</label><input type="number" id="tickets" min="0" step="1" inputmode="numeric"/></div>
       </div>
 
-      <hr class="sep">
-      <h2>Filter & Suche</h2>
-      <div class="row gap">
-        <input type="text" id="search" placeholder="Suche Name/Effekt…" autocomplete="off" />
-        <select id="rarity" aria-label="Seltenheit">
-          <option value="">Seltenheit – alle</option>
-          <option>Common</option><option>Uncommon</option><option>Rare</option><option>Epic</option><option>Legendary</option>
-        </select>
-        <label class="pill"><input type="checkbox" id="ownedOnly"> nur Besitz</label>
-      </div>
-      <div class="row gap" id="chips">
-        <button class="pill" data-chip="red-button">Red-Button</button>
-        <button class="pill" data-chip="golden-mod">Golden-Mod</button>
-        <button class="pill" data-chip="tickets">Tickets</button>
-        <button class="pill" data-chip="energy">Energy</button>
-      </div>
+      <div class="active-bar" id="activeBar" aria-live="polite"></div>
+      <div class="summary-box" id="summaryBox">Keine aktiven Glücksbringer.</div>
     </section>
 
     <section class="panel pad">
-      <h2>Aktive Effekte</h2>
-      <div id="stats" class="subtle"></div>
-
-      <details id="listSection" class="fold" open>
-        <summary>
-          <span>Glücksbringer</span>
-          <span class="summary-badges">
-            <span class="pill" id="summaryFiltered">0 gefiltert</span>
-            <span class="pill" id="summaryOwned">0 besessen</span>
-          </span>
-        </summary>
-        <ul id="charmList" class="charm-list" aria-live="polite"></ul>
-      </details>
+      <h2>Glücksbringer</h2>
+      <div id="grid" class="grid" aria-live="polite"></div>
     </section>
   </main>
 
@@ -74,101 +48,46 @@
 
 <script>
 (function(){
-  var VERSION='2025-10-02-15';
+  var VERSION='2025-10-03-03';
   function bust(u){return u+(u.indexOf('?')>=0?'&':'?')+'v='+VERSION;}
 
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(function(reg){
-      document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') reg.update(); });
-      setInterval(function(){ reg.update(); }, 30*60*1000);
-    });
-  }
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(function(reg){document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible') reg.update();});setInterval(function(){reg.update();},30*60*1000);});}
 
-  // Version badge
-  fetch(bust('version.json'),{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
-    var el=document.getElementById('versionBadge');
-    el.textContent='v '+((d&&d.version)||'');
-  });
+  fetch(bust('version.json'),{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var el=document.getElementById('versionBadge');el.textContent='v '+((d&&d.version)||'');});
 
-  // Load charms
   var CHARMS=[];
-  fetch(bust('charms.json')).then(function(r){return r.json()}).then(function(d){ CHARMS=d||[]; render(); updateStats(); });
+  fetch(bust('charms.json')).then(function(r){return r.json()}).then(function(d){CHARMS=d||[]; renderGrid(); updateSummary();});
 
-  // State
-  var store={ load:function(){ try{ return JSON.parse(localStorage.getItem('cpit')||'{}'); }catch(e){ return {}; } },
-              save:function(x){ try{ localStorage.setItem('cpit', JSON.stringify(x)); }catch(e){} } };
-  var state=(function(){ var base={coins:0,tickets:0,owned:{},filters:{q:'',rarity:'',tag:'',ownedOnly:false},ui:{listOpen:true}}; var s=store.load(); for(var k in s) base[k]=s[k]; return base; })();
-
-  function $(s){ return document.querySelector(s); }
-  var listEl=$('#charmList'), statsEl=$('#stats'), listSection=$('#listSection');
-  var summaryFiltered=$('#summaryFiltered'), summaryOwned=$('#summaryOwned');
+  var store={load:function(){try{return JSON.parse(localStorage.getItem('cpit')||'{}');}catch(e){return {};}},
+             save:function(x){try{localStorage.setItem('cpit',JSON.stringify(x));}catch(e){}}};
+  var state=(function(){var base={coins:0,tickets:0,owned:{}};var s=store.load();for(var k in s)base[k]=s[k];return base;})();
 
   var coinsEl=document.getElementById('coins'), ticketsEl=document.getElementById('tickets');
   coinsEl.value=state.coins; ticketsEl.value=state.tickets;
-  coinsEl.addEventListener('input', function(e){ state.coins=(+e.target.value)||0; sync(); });
-  ticketsEl.addEventListener('input', function(e){ state.tickets=(+e.target.value)||0; sync(); });
+  coinsEl.addEventListener('input',function(e){state.coins=(+e.target.value)||0; sync();});
+  ticketsEl.addEventListener('input',function(e){state.tickets=(+e.target.value)||0; sync();});
 
-  var searchEl=document.getElementById('search'), rarityEl=document.getElementById('rarity'), ownedOnlyEl=document.getElementById('ownedOnly');
-  searchEl.value=state.filters.q;
-  searchEl.addEventListener('input', function(e){ state.filters.q=(e.target.value||'').trim().toLowerCase(); render(); sync(); });
-  rarityEl.value=state.filters.rarity;
-  rarityEl.addEventListener('change', function(e){ state.filters.rarity=e.target.value; render(); sync(); });
-  ownedOnlyEl.checked=!!state.filters.ownedOnly;
-  ownedOnlyEl.addEventListener('change', function(e){ state.filters.ownedOnly=!!e.target.checked; render(); sync(); });
-
-  var chipsEl=document.getElementById('chips');
-  chipsEl.addEventListener('click', function(e){ var chip=e.target && e.target.getAttribute && e.target.getAttribute('data-chip')? e.target : null; if(!chip) return; var tag=chip.getAttribute('data-chip'); var on=!/ active /.test(' '+chip.className+' '); chip.className=on?(chip.className+' active'):chip.className.replace('active',''); state.filters.tag=on?tag:''; render(); sync(); });
-
-  if(listSection){ listSection.open=!!state.ui.listOpen; listSection.addEventListener('toggle', function(){ state.ui.listOpen=!!listSection.open; sync(); }); }
-
-  document.getElementById('exportBtn').addEventListener('click', function(){
-    var blob=new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-    var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='cloverpit-companion.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen');
-  });
+  document.getElementById('exportBtn').addEventListener('click', function(){ var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='cloverpit-companion.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showToast('Export abgeschlossen'); });
   document.getElementById('importBtn').addEventListener('click', function(){ document.getElementById('fileInput').click(); });
-  document.getElementById('fileInput').addEventListener('change', function(e){
-    var f=e.target.files && e.target.files[0]; if(!f) return; var r=new FileReader();
-    r.onload=function(){ try{ var data=JSON.parse(r.result); for(var k in data) state[k]=data[k]; coinsEl.value=state.coins; ticketsEl.value=state.tickets; render(); sync(); showToast('Import erfolgreich'); }catch(_){ showToast('Ungültige JSON-Datei'); } };
-    r.readAsText(f);
-  });
+  document.getElementById('fileInput').addEventListener('change', function(e){ var f=e.target.files && e.target.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ try{ var data=JSON.parse(r.result); for(var k in data) state[k]=data[k]; coinsEl.value=state.coins; ticketsEl.value=state.tickets; renderGrid(); updateSummary(); sync(); showToast('Import erfolgreich'); }catch(_e){ showToast('Ungültige JSON-Datei'); } }; r.readAsText(f); });
   document.getElementById('resetBtn').addEventListener('click', function(){ if(confirm('Alles zurücksetzen?')){ localStorage.removeItem('cpit'); location.reload(); }});
 
-  function sync(){ store.save(state); updateStats(); }
-  function updateStats(){
-    var ownedCount=0; for(var k in state.owned){ if(state.owned[k]) ownedCount++; }
-    if(statsEl) statsEl.textContent = ownedCount + '/' + (CHARMS.length||0) + ' besessen · Tickets: ' + state.tickets + ' · Münzen: ' + state.coins;
-    if(summaryOwned) summaryOwned.textContent = ownedCount + ' besessen';
-  }
-  function currentFiltered(){
-    var q=state.filters.q, rar=state.filters.rarity, tag=state.filters.tag, ownedOnly=state.filters.ownedOnly;
-    return (CHARMS||[]).filter(function(c){
-      if(rar && c.rarity!==rar) return false;
-      if(tag && !(c.tags||[]).includes(tag)) return false;
-      if(q){ var hay=((c.name||'')+' '+(c.effect||'')).toLowerCase(); if(hay.indexOf(q)<0) return false; }
-      if(ownedOnly && !state.owned[c.id]) return false;
-      return true;
-    }).sort(function(a,b){ return a.name.localeCompare(b.name); });
-  }
-  function highlight(text, query){
-    if(!query) return text; var l=(text||'').toLowerCase(); var idx=l.indexOf(query.toLowerCase()); if(idx<0) return text;
-    return text.slice(0,idx)+'<mark>'+text.slice(idx,idx+query.length)+'</mark>'+text.slice(idx+query.length);
-  }
-  function render(){
-    if(!listEl) return; var items=currentFiltered(); var q=state.filters.q; listEl.innerHTML='';
-    for(var i=0;i<items.length;i++){ var c=items[i];
-      var li=document.createElement('li'); li.className='charm-item'; li.dataset.id=c.id;
-      var label=document.createElement('label'); var cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!state.owned[c.id];
-      (function(id,name){ cb.addEventListener('change', function(e){ state.owned[id]=!!e.target.checked; sync(); showToast((e.target.checked?'Hinzugefügt: ':'Entfernt: ')+name); }); })(c.id,c.name);
-      var name=document.createElement('div'); name.innerHTML=highlight(c.name, q);
-      var eff=document.createElement('div'); eff.innerHTML=highlight(c.effect, q);
-      var meta=document.createElement('div'); var t=document.createElement('span'); t.className='pill'; t.textContent='🎟️ '+c.tickets; var r=document.createElement('span'); r.className='pill'; r.textContent=c.rarity; meta.appendChild(t); meta.appendChild(r);
-      var tags=(c.tags||[]); for(var j=0;j<tags.length;j++){ var p=document.createElement('span'); p.className='pill'; p.textContent=tags[j]; meta.appendChild(p); }
-      label.appendChild(cb); label.appendChild(name); label.appendChild(eff); label.appendChild(meta); li.appendChild(label); listEl.appendChild(li);
-    }
-    if(summaryFiltered) summaryFiltered.textContent = items.length + ' gefiltert';
-    updateStats();
-  }
-  function showToast(msg){ var el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(function(){ el.classList.remove('show'); }, 1400); }
+  function $(s){return document.querySelector(s);}
+  var grid=$('#grid'), activeBar=$('#activeBar'), summaryBox=$('#summaryBox');
+
+  function renderGrid(){ grid.innerHTML=''; for(var i=0;i<CHARMS.length;i++){ var c=CHARMS[i]; var t=document.createElement('button'); t.type='button'; t.className='tile'+(state.owned[c.id]?' active':''); t.setAttribute('aria-pressed', state.owned[c.id]?'true':'false'); (function(id){ t.addEventListener('click', function(){ state.owned[id]=!state.owned[id]; renderGrid(); updateSummary(); sync(); showToast(state.owned[id]?'Aktiviert':'Deaktiviert'); }); })(c.id); var nm=document.createElement('div'); nm.className='name'; nm.textContent=c.name; var eff=document.createElement('div'); eff.className='effect'; eff.textContent=c.effect; var meta=document.createElement('div'); meta.className='meta'; var b1=document.createElement('span'); b1.className='badge'; b1.textContent='🎟️ '+c.tickets; var b2=document.createElement('span'); b2.className='badge'; b2.textContent=c.rarity; var b3=document.createElement('span'); b3.className='badge own'; b3.textContent=state.owned[c.id]?'aktiv':'tippen zum Aktivieren'; meta.appendChild(b1); meta.appendChild(b2); meta.appendChild(b3); t.appendChild(nm); t.appendChild(eff); t.appendChild(meta); grid.appendChild(t); } updateActiveBar(); }
+
+  function updateActiveBar(){ activeBar.innerHTML=''; for(var i=0;i<CHARMS.length;i++){var c=CHARMS[i]; if(state.owned[c.id]){ var chip=document.createElement('div'); chip.className='active-chip'; chip.textContent=c.name; activeBar.appendChild(chip);} }}
+
+  function aggregateMods(){ var sum={}; for(var i=0;i<CHARMS.length;i++){ var c=CHARMS[i]; if(!state.owned[c.id]) continue; var m=c.mods||{}; for(var k in m){ var v=m[k]; if(v==null) continue; if(typeof v==='number'){ sum[k]=(sum[k]||0)+v; } else if(typeof v==='boolean'){ sum[k]=(sum[k]||0)+(v?1:0); } else if(typeof v==='object'){ if(!sum[k]) sum[k]={}; for(var sub in v){ sum[k][sub]=(sum[k][sub]||0)+v[sub]; } } } } return sum; }
+
+  function humanize(sum){ var parts=[]; if(sum.energy_end) parts.push('Energy am Deadline‑Ende: +'+sum.energy_end); if(sum.spins_per_round) parts.push('Spins pro Runde: +'+sum.spins_per_round); if(sum.luck_random) parts.push('Luck (zufällig): +'+sum.luck_random); if(sum.luck_next_spin) parts.push('Luck nächster Spin: +'+sum.luck_next_spin); if(sum.luck_last_spin) parts.push('Luck letzter Spin: +'+sum.luck_last_spin); if(sum.interest_pct) parts.push('Zins: +'+sum.interest_pct+'%'); if(sum.pattern_multiplier) parts.push('Muster-Multiplier ×'+sum.pattern_multiplier); if(sum.red_button_bias){ var sub=sum.red_button_bias, arr=[]; for(var k in sub) arr.push(k+' +'+sub[k]); parts.push('Red‑Button Bias: '+arr.join(', ')); } if(sum.golden_bias){ var sub2=sum.golden_bias, arr2=[]; for(var g in sub2) arr2.push(g+' +'+sub2[g]+'%'); parts.push('Golden‑Bias: '+arr2.join(', ')); } if(!parts.length) parts.push('Keine aggregierten Effekte.'); return parts.join(' · '); }
+
+  function updateSummary(){ var sum=aggregateMods(); var ownedCount=0; for(var i=0;i<CHARMS.length;i++) if(state.owned[CHARMS[i].id]) ownedCount++; var header=ownedCount+'/'+CHARMS.length+' aktiv · Tickets: '+state.tickets+' · Münzen: '+state.coins; summaryBox.textContent=header+' — '+humanize(sum); }
+
+  function sync(){ store.save(state); }
+
+  function showToast(msg){ var el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); setTimeout(function(){ el.classList.remove('show'); }, 1300); }
 })();
 </script>
 
